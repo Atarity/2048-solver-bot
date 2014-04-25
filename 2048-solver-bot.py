@@ -1,4 +1,4 @@
-import os, time, re
+import os, time, re, sys
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 
@@ -28,10 +28,18 @@ time.sleep(0.1)
 element.send_keys(Keys.ARROW_UP)
 time.sleep(0.1)
 element.send_keys(Keys.ARROW_RIGHT)"""
-time.sleep(20)
+while True:
+	grid = ["grid", "growth", "g"]
+	quit = ["stop", "exit", "quit", "q"]
+	response = raw_input()
+	if response in grid:
+		garden = driver.find_elements_by_class_name("tile")
+		growth(garden)
+	elif response in quit:
+		time.sleep(0.1)
+		driver.close()
+		sys.exit()
 
-garden = driver.find_elements_by_class_name("tile")
-growth(garden)
 
-#time.sleep(5)
-#driver.close()
+
+
