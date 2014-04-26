@@ -25,7 +25,7 @@ def growth(gardenG):
 	        print '{:4}'.format(val),
 	    print
 
-def zeroRemove(lineZ):
+def zeroRemove(lineZ):		#deleting all zeroes from list
 	for k in range(0, 3):
 		for i in range(0, 3):
 			if lineZ[i] == 0 and lineZ[i+1] != 0:
@@ -34,7 +34,7 @@ def zeroRemove(lineZ):
 				lineZ[i+1] = 0
 	return lineZ
 
-def powerPerform(lineP):
+def powerPerform(lineP):	#make tile multiplication
 	for i in range(0, 3):
 		if lineP[i] == lineP[i+1]:
 			y = lineP[i]*2
@@ -47,20 +47,24 @@ def lineAction(lineL):
 		x = lineL[0]*2
 		lineL = [x, x, 0, 0]
 	else:
-		ineL = zeroRemove(lineL)
+		lineL = zeroRemove(lineL) 
 		lineL = powerPerform(lineL)
-		ineL = zeroRemove(lineL)
+		lineL = zeroRemove(lineL)	#need to remove new zeroes after multiplication
 	return lineL
 
 def turnEmul(gardenT):
+	outputT = [[0 for _ in range (4)] for _ in range (4)]
 	for i in range(0, 4):
-		mesT = [gardenT[3][i], gardenT[2][i], gardenT[1][i], gardenT[0][i]]
-		print lineAction(mesT)
-	"""print "Emulated:"
-	for row in mesT:
+		originT = [gardenT[3][i], gardenT[2][i], gardenT[1][i], gardenT[0][i]]
+		tempT = lineAction(originT)
+		tempT = tempT[::-1]		#reverse list
+		for k in range(0, 4):
+			outputT[k][i] = tempT[k]
+	print "Emulated:"
+	for row in outputT:
 	    for val in row:
 	        print '{:4}'.format(val),
-	    print"""
+	    print
 
 """element = driver.find_element_by_tag_name("body")
 element.send_keys(Keys.ARROW_DOWN)
