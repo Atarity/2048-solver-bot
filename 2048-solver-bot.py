@@ -79,19 +79,32 @@ def turnEmul(gardenT, direction):
 	    for val in row:
 	        print '{:4}'.format(val),
 	    print
+	return outputT
 
-"""element = driver.find_element_by_tag_name("body")
-element.send_keys(Keys.ARROW_DOWN)
-time.sleep(0.1)
-element.send_keys(Keys.ARROW_LEFT)
-time.sleep(0.1)
-element.send_keys(Keys.ARROW_UP)
-time.sleep(0.1)
-element.send_keys(Keys.ARROW_RIGHT)"""
+def decisionMaker(gardenD):
+	d = sum(sum(1 for i in row if i) for row in turnEmul(Garden, "down"))		#count all non-zero entries if turn arrow-down
+	r = sum(sum(1 for i in row if i) for row in turnEmul(Garden, "right"))	
+	u = sum(sum(1 for i in row if i) for row in turnEmul(Garden, "up"))	
+	l = sum(sum(1 for i in row if i) for row in turnEmul(Garden, "left"))	
+	listD = [d, r, u, l]
+	print listD
+	if Garden == turnEmul(Garden, "down"):
+		decision = "up"
+	elif listD.index(min(listD)) == 0:		#the decision depends on how many non-zero tiles in predicted garden
+		decision = "down"
+	elif listD.index(min(listD)) == 1:
+		decision = "right"
+	elif listD.index(min(listD)) == 2:
+		decision = "up"
+	elif listD.index(min(listD)) == 3:
+		decision = "left"	
+	return decision
+
 while True:
 	grid = ["grid", "growth", "g"]
 	quit = ["stop", "exit", "quit", "q"]
 	action = ["action", "act"]
+	play = ["play", "pl"]
 	down = ["down", "dwn"]
 	right = ["right", "rt"]
 	up = ["up"]
@@ -100,6 +113,26 @@ while True:
 	if response in grid:
 		seeds = driver.find_elements_by_class_name("tile")
 		growth(seeds)
+	elif response in action:
+		seeds = driver.find_elements_by_class_name("tile")
+		growth(seeds)
+		print decisionMaker(Garden)
+	elif response in play:
+		element = driver.find_element_by_tag_name("body")
+		while True:
+			seeds = driver.find_elements_by_class_name("tile")
+			growth(seeds)
+			d = decisionMaker(Garden)
+			#print d
+			if d == "down":
+				element.send_keys(Keys.ARROW_DOWN)
+			elif d == "right":
+				element.send_keys(Keys.ARROW_RIGHT)
+			elif d == "up":
+				element.send_keys(Keys.ARROW_UP)
+			elif d == "left":
+				element.send_keys(Keys.ARROW_LEFT)
+			time.sleep(0.01)
 	elif response in down:
 		seeds = driver.find_elements_by_class_name("tile")
 		growth(seeds)
