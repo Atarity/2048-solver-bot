@@ -17,7 +17,7 @@ def growth(gardenG):
 	Garden = [[0 for _ in range (4)] for _ in range (4)]
 	print "Garden:"
 	for i in gardenG:
-		mes = re.findall(r"\d+", str(i.get_attribute("class")))		#take only digits
+		mes = re.findall(r"\d+", str(i.get_attribute("class")))		#take only digits from class-name
 		Garden[int(mes[2])-1][int(mes[1])-1] = int(mes[0])		#put it to the 2D matrix
 		#print mes
 	for row in Garden:
@@ -52,14 +52,14 @@ def lineAction(lineL):
 		lineL = zeroRemove(lineL)	#need to remove new zeroes after multiplication
 	return lineL
 
-def turnEmul(gardenT, direction):
+def turnEmul(gardenT, direction):		#4 turn emulation depends on arrow direction
 	outputT = [[0 for _ in range (4)] for _ in range (4)]
 	if direction == "right":
 		gardenT = zip(*gardenT[::-1])		#rotate matrix CW for right arrow turn
 	elif direction == "up":
 		gardenT = zip(*gardenT[::-1])
 		gardenT = zip(*gardenT[::-1])		#rotate it twice
-	if direction == "left":
+	elif direction == "left":
 		gardenT = zip(*gardenT)[::-1]
 	for i in range(0, 4):
 		originT = [gardenT[3][i], gardenT[2][i], gardenT[1][i], gardenT[0][i]]		#map garden column to operation list
@@ -69,35 +69,53 @@ def turnEmul(gardenT, direction):
 			outputT[k][i] = tempT[k]
 	if direction == "right":
 		outputT = zip(*outputT)[::-1]	#rotate matrix CCW back to input state
-	if direction == "up":
+	elif direction == "up":
 		outputT = zip(*outputT)[::-1]
 		outputT = zip(*outputT)[::-1]
-	if direction == "left":
+	elif direction == "left":
 		outputT = zip(*outputT[::-1])
 	print "Emulated" + "-" + direction + ":"
 	for row in outputT:
 	    for val in row:
 	        print '{:4}'.format(val),
 	    print
-	return outputT
+	return map(list, outputT)		#fixing data structures, remove list of tuples in output
 
 def decisionMaker(gardenD):
-	d = sum(sum(1 for i in row if i) for row in turnEmul(Garden, "down"))		#count all non-zero entries if turn arrow-down
-	r = sum(sum(1 for i in row if i) for row in turnEmul(Garden, "right"))	
-	u = sum(sum(1 for i in row if i) for row in turnEmul(Garden, "up"))	
-	l = sum(sum(1 for i in row if i) for row in turnEmul(Garden, "left"))	
+	downMatrix = turnEmul(Garden, "down")
+	rightMatrix = turnEmul(Garden, "right")
+	upMatrix = turnEmul(Garden, "up")
+	leftMatrix = turnEmul(Garden, "left")
+	d = sum(sum(1 for i in row if i) for row in downMatrix)		#count all non-zero entries if turn arrow-down
+	r = sum(sum(1 for i in row if i) for row in rightMatrix)	
+	u = sum(sum(1 for i in row if i) for row in upMatrix)	
+	l = sum(sum(1 for i in row if i) for row in leftMatrix)	
 	listD = [d, r, u, l]
 	print listD
-	if Garden == turnEmul(Garden, "down"):
-		decision = "up"
-	elif listD.index(min(listD)) == 0:		#the decision depends on how many non-zero tiles in predicted garden
-		decision = "down"
-	elif listD.index(min(listD)) == 1:
-		decision = "right"
-	elif listD.index(min(listD)) == 2:
-		decision = "up"
-	elif listD.index(min(listD)) == 3:
-		decision = "left"	
+	if any( [Garden == downMatrix, Garden == rightMatrix, Garden == upMatrix, Garden == leftMatrix] ):
+		if Garden != downMatrix :
+			decision = "down"
+		elif Garden != rightMatrix :
+			decision = "right"
+		elif Garden != upMatrix :
+			decision = "up"
+		elif Garden != leftMatrix :
+			decision = "left"
+		else:
+			score = driver.find_element_by_class_name("score-container")
+			print "Score: " + score.get_attribute("innerText")
+			print "Where is no way to solve it! Or it already solved.)"
+			driver.close()
+			sys.exit()
+	else:
+		if listD.index(min(listD)) == 0:		#the decision depends on how many non-zero tiles in predicted garden
+			decision = "down"
+		elif listD.index(min(listD)) == 1:
+			decision = "right"
+		elif listD.index(min(listD)) == 2:
+			decision = "up"
+		elif listD.index(min(listD)) == 3:
+			decision = "left"	
 	return decision
 
 while True:
@@ -123,7 +141,7 @@ while True:
 			seeds = driver.find_elements_by_class_name("tile")
 			growth(seeds)
 			d = decisionMaker(Garden)
-			#print d
+			print d.upper()
 			if d == "down":
 				element.send_keys(Keys.ARROW_DOWN)
 			elif d == "right":
@@ -132,7 +150,7 @@ while True:
 				element.send_keys(Keys.ARROW_UP)
 			elif d == "left":
 				element.send_keys(Keys.ARROW_LEFT)
-			time.sleep(0.01)
+			time.sleep(0.1)
 	elif response in down:
 		seeds = driver.find_elements_by_class_name("tile")
 		growth(seeds)
