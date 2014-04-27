@@ -52,15 +52,29 @@ def lineAction(lineL):
 		lineL = zeroRemove(lineL)	#need to remove new zeroes after multiplication
 	return lineL
 
-def turnEmul(gardenT):
+def turnEmul(gardenT, direction):
 	outputT = [[0 for _ in range (4)] for _ in range (4)]
+	if direction == "right":
+		gardenT = zip(*gardenT[::-1])		#rotate matrix CW for right arrow turn
+	elif direction == "up":
+		gardenT = zip(*gardenT[::-1])
+		gardenT = zip(*gardenT[::-1])		#rotate it twice
+	if direction == "left":
+		gardenT = zip(*gardenT)[::-1]
 	for i in range(0, 4):
-		originT = [gardenT[3][i], gardenT[2][i], gardenT[1][i], gardenT[0][i]]
+		originT = [gardenT[3][i], gardenT[2][i], gardenT[1][i], gardenT[0][i]]		#map garden column to operation list
 		tempT = lineAction(originT)
 		tempT = tempT[::-1]		#reverse list
 		for k in range(0, 4):
 			outputT[k][i] = tempT[k]
-	print "Emulated:"
+	if direction == "right":
+		outputT = zip(*outputT)[::-1]	#rotate matrix CCW back to input state
+	if direction == "up":
+		outputT = zip(*outputT)[::-1]
+		outputT = zip(*outputT)[::-1]
+	if direction == "left":
+		outputT = zip(*outputT[::-1])
+	print "Emulated" + "-" + direction + ":"
 	for row in outputT:
 	    for val in row:
 	        print '{:4}'.format(val),
@@ -78,14 +92,30 @@ while True:
 	grid = ["grid", "growth", "g"]
 	quit = ["stop", "exit", "quit", "q"]
 	action = ["action", "act"]
+	down = ["down", "dwn"]
+	right = ["right", "rt"]
+	up = ["up"]
+	left = ["left", "lt"]
 	response = raw_input()
 	if response in grid:
 		seeds = driver.find_elements_by_class_name("tile")
 		growth(seeds)
-	elif response in action:
+	elif response in down:
 		seeds = driver.find_elements_by_class_name("tile")
 		growth(seeds)
-		turnEmul(Garden)
+		turnEmul(Garden, "down")
+	elif response in right:
+		seeds = driver.find_elements_by_class_name("tile")
+		growth(seeds)
+		turnEmul(Garden, "right")
+	elif response in up:
+		seeds = driver.find_elements_by_class_name("tile")
+		growth(seeds)
+		turnEmul(Garden, "up")
+	elif response in left:
+		seeds = driver.find_elements_by_class_name("tile")
+		growth(seeds)
+		turnEmul(Garden, "left")
 	elif response in quit:
 		time.sleep(0.1)
 		driver.close()
