@@ -1,4 +1,4 @@
-import os, time, re, sys
+import os, time, re, sys, csv, datetime, itertools, timeit
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 
@@ -9,21 +9,47 @@ driver = webdriver.Chrome(chromedriver)
 driver.get("http://gabrielecirulli.github.io/2048/")
 assert "2048" in driver.title
 
+Version = "0.0.4"
 Garden = [[0 for _ in range (4)] for _ in range (4)]	#global matrix for storing tiles state
+TimerStart = 0 
+TimerStop = 0
+
+def gameTimer(standbyG):
+	global TimerStart, TimerStop
+	if standbyG == "start":
+		TimerStart = timeit.default_timer()
+	elif standbyG == "stop":
+		TimerStop = timeit.default_timer()
+	else:
+		overall = TimerStop - TimerStart
+		return time.strftime('%M:%S', time.localtime(overall))
+
+def logToFile():
+	with open('ResultLog.csv', 'a',) as fp:		#write results to the file
+	    a = csv.writer(fp, delimiter=',')
+	    data = [Version, datetime.datetime.now().strftime("%d%B%Y %H:%M:%S"), getPubScore(), max(itertools.chain(*Garden)), gameTimer("show")]
+	    a.writerow(data)
+
+def getPubScore():		#get game score
+	score = driver.find_element_by_class_name("score-container")
+	pubScore = eval(score.get_attribute("innerText"))		#remove eval(), use re
+	return str(pubScore)
+
+def printMatrix(matrixP):
+	for row in matrixP:
+	    for val in row:
+	        print '{:4}'.format(val),
+	    print
 
 #find all page elements with class-name "tile" and parse it class-names, make matrix from this data and show it 
 def growth(gardenG):
 	global Garden
 	Garden = [[0 for _ in range (4)] for _ in range (4)]
-	print "Garden:"
 	for i in gardenG:
 		mes = re.findall(r"\d+", str(i.get_attribute("class")))		#take only digits from class-name
 		Garden[int(mes[2])-1][int(mes[1])-1] = int(mes[0])		#put it to the 2D matrix
-		#print mes
-	for row in Garden:
-	    for val in row:
-	        print '{:4}'.format(val),
-	    print
+	print "Garden:"
+	printMatrix(Garden)
 
 def zeroRemove(lineZ):		#deleting all zeroes from list
 	for k in range(0, 3):
@@ -42,7 +68,7 @@ def powerPerform(lineP):	#make tile multiplication
 			lineP[i+1] = 0
 	return lineP
 
-def lineAction(lineL):
+def lineAction(lineL):		#perform turn-simulation on exact column
 	if len(set(lineL)) == 1:	#if all elements is identical
 		x = lineL[0]*2
 		lineL = [x, x, 0, 0]
@@ -75,10 +101,7 @@ def turnEmul(gardenT, direction):		#4 turn emulation depends on arrow direction
 	elif direction == "left":
 		outputT = zip(*outputT[::-1])
 	print "Emulated" + "-" + direction + ":"
-	for row in outputT:
-	    for val in row:
-	        print '{:4}'.format(val),
-	    print
+	printMatrix(outputT)
 	return map(list, outputT)		#fixing data structures, remove list of tuples in output
 
 def decisionMaker(gardenD):
@@ -102,8 +125,11 @@ def decisionMaker(gardenD):
 		elif Garden != leftMatrix :
 			decision = "left"
 		else:
-			score = driver.find_element_by_class_name("score-container")
-			print "Score: " + score.get_attribute("innerText")
+			gameTimer("stop")
+			logToFile()
+			print "Score: " + getPubScore()
+			print "MaxTile: " + str(max(itertools.chain(*Garden)))		#flatten Garden and found max tile
+			print "Time spent (m:s) : " + gameTimer("show")
 			print "Where is no way to solve it! Or it already solved.)"
 			driver.close()
 			sys.exit()
@@ -132,11 +158,16 @@ while True:
 		seeds = driver.find_elements_by_class_name("tile")
 		growth(seeds)
 	elif response in action:
+		gameTimer("start")
 		seeds = driver.find_elements_by_class_name("tile")
 		growth(seeds)
 		print decisionMaker(Garden)
+		time.sleep(3)
+		gameTimer("stop")
+		print gameTimer("show")
 	elif response in play:
 		element = driver.find_element_by_tag_name("body")
+		gameTimer("start")
 		while True:
 			seeds = driver.find_elements_by_class_name("tile")
 			growth(seeds)
