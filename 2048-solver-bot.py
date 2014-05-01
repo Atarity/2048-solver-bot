@@ -10,20 +10,22 @@ driver = webdriver.Chrome(chromedriver)
 driver.get("http://gabrielecirulli.github.io/2048/")
 assert "2048" in driver.title
 
-Version = "0.0.5"
-Garden = [[0 for _ in range (4)] for _ in range (4)]	#global matrix for storing tiles state
-#Garden = np.zeros((4, 4))
-TimerStart = 0 
-TimerStop = 0
+Version = "0.0.6"
+Garden = np.zeros((4, 4), dtype=np.int)		#global matrix for storing tiles state
+TimerStart, TimerStop = 0, 0
 CounterTurn, CounterTurnDown, CounterTurnRight, CounterTurnUp, CounterTurnLeft = 0, 0, 0, 0, 0
 
-def gameTimer(standbyG):
+def gameTimer(standbyG):		#game stopwatch
 	global TimerStart, TimerStop
 	if standbyG == "start":
 		TimerStart = timeit.default_timer()
 	elif standbyG == "stop":
 		TimerStop = timeit.default_timer()
-	else:
+	elif standbyG == "tps":
+		overall = TimerStop - TimerStart
+		t = time.strftime('%M:%S', time.localtime(overall))
+		return sum(int(x) * 60 ** i for i,x in enumerate(reversed(t.split(":"))))		#manually convert to total seconds
+	elif standbyG == "show":
 		overall = TimerStop - TimerStart
 		return time.strftime('%M:%S', time.localtime(overall))
 
@@ -34,27 +36,29 @@ def logToFile():
 	    		datetime.datetime.now().strftime("%d%B%Y %H:%M:%S"), 
 	    		getPubScore(), 
 	    		max(itertools.chain(*Garden)), 
-	    		gameTimer("show"), 
-	    		CounterTurn, 
+	    		gameTimer("show"), 										#time spent
+	    		round(CounterTurn / float(gameTimer("tps")), 2),		#turns per secons
+	    		CounterTurn, 											#turns total
 	    		round(float(CounterTurnDown) / CounterTurn * 100, 1), 
 	    		round(float(CounterTurnRight) / CounterTurn * 100, 1), 
 	    		round(float(CounterTurnUp) / CounterTurn * 100, 1), 
 	    		round(float(CounterTurnLeft) / CounterTurn * 100, 1), 
-	    		Garden]
+	    		Garden.flatten('C')]
 	    a.writerow(data)
 
 def printSummary():		#print summary after game finished
 	print " "
 	printMatrix(Garden)
 	print " "
-	print "Score: " + getPubScore()
-	print "MaxTile: " + str(max(itertools.chain(*Garden)))		#flatten Garden and found max tile
-	print "Turns total: " + str(CounterTurn)
-	print "      down: " + str(round(float(CounterTurnDown) / CounterTurn * 100, 1)) + "&"
-	print "      right: " + str(round(float(CounterTurnRight) / CounterTurn * 100, 1)) + "%"
-	print "      up: " + str(round(float(CounterTurnUp) / CounterTurn * 100, 1)) + "%"
-	print "      left: " + str(round(float(CounterTurnLeft) / CounterTurn * 100, 1)) + "%"
-	print "Time spent (m:s) : " + gameTimer("show")
+	print "Score:         " + getPubScore()
+	print "MaxTile:       " + str(max(itertools.chain(*Garden)))		#flatten Garden and found max tile
+	print "Turns total:   " + str(CounterTurn)
+	print "       down:   " + str(round(float(CounterTurnDown) / CounterTurn * 100, 1)) + "%"
+	print "      right:   " + str(round(float(CounterTurnRight) / CounterTurn * 100, 1)) + "%"
+	print "         up:   " + str(round(float(CounterTurnUp) / CounterTurn * 100, 1)) + "%"
+	print "       left:   " + str(round(float(CounterTurnLeft) / CounterTurn * 100, 1)) + "%"
+	print "Time (m:s):    " + gameTimer("show")
+	print "Turns per sec: " + str(round(CounterTurn / float(gameTimer("tps")), 2))
 	print " "
 
 def getPubScore():		#get game score
@@ -62,7 +66,7 @@ def getPubScore():		#get game score
 	pubScore = re.split('\+', score.get_attribute("innerText"))		#split string on "+" and save 1st part
 	return str(pubScore[0])
 
-def printMatrix(matrixP):
+def printMatrix(matrixP):		#fancy matrices renderer for debugging
 	for row in matrixP:
 	    for val in row:
 	        print '{:4}'.format(val),
@@ -71,13 +75,12 @@ def printMatrix(matrixP):
 #find all page elements with class-name "tile" and parse it class-names, make matrix from this data and show it 
 def growth(gardenG):
 	global Garden
-	Garden = [[0 for _ in range (4)] for _ in range (4)]
-	#Garden = np.zeros((4, 4), dtype=np.int)
+	Garden = np.zeros((4, 4), dtype=np.int)
 	for i in gardenG:
 		mes = re.findall(r"\d+", str(i.get_attribute("class")))		#take only digits from class-name
-		Garden[int(mes[2])-1][int(mes[1])-1] = int(mes[0])		#put it to the 2D matrix
-	print "Garden:"
-	printMatrix(Garden)
+		Garden[(int(mes[2])-1), (int(mes[1])-1)] = int(mes[0])		#put it to the 2D matrix
+	#print "Garden:"
+	#printMatrix(Garden)
 
 def zeroRemove(lineZ):		#deleting all zeroes from list
 	for k in range(0, 3):
@@ -107,30 +110,29 @@ def lineAction(lineL):		#perform turn-simulation on exact column
 	return lineL
 
 def turnEmul(gardenT, direction):		#4 turn emulation depends on arrow direction
-	outputT = [[0 for _ in range (4)] for _ in range (4)]
+	outputT = np.zeros((4, 4), dtype=np.int)
 	if direction == "right":
-		gardenT = zip(*gardenT[::-1])		#rotate matrix CW for right arrow turn
+		gardenT = np.rot90(gardenT, 3)		#rotate matrix CCW x3 for right arrow turn
 	elif direction == "up":
-		gardenT = zip(*gardenT[::-1])
-		gardenT = zip(*gardenT[::-1])		#rotate it twice
+		gardenT = np.rot90(gardenT, 2)
 	elif direction == "left":
-		gardenT = zip(*gardenT)[::-1]
+		gardenT = np.rot90(gardenT, 1)
 	for i in range(0, 4):
-		originT = [gardenT[3][i], gardenT[2][i], gardenT[1][i], gardenT[0][i]]		#map garden column to operation list
+		originT = [gardenT[3, i], gardenT[2, i], gardenT[1, i], gardenT[0, i]]		#map garden column to operation list
 		tempT = lineAction(originT)
 		tempT = tempT[::-1]		#reverse list
 		for k in range(0, 4):
-			outputT[k][i] = tempT[k]
+			outputT[k, i] = tempT[k]
 	if direction == "right":
-		outputT = zip(*outputT)[::-1]	#rotate matrix CCW back to input state
+		outputT = np.rot90(outputT, 1)	#rotate matrix CCW back to input state
 	elif direction == "up":
-		outputT = zip(*outputT)[::-1]
-		outputT = zip(*outputT)[::-1]
+		outputT = np.rot90(outputT, 2)
 	elif direction == "left":
-		outputT = zip(*outputT[::-1])
+		outputT = np.rot90(outputT, 3)
 	#print "Emulated" + "-" + direction + ":"
 	#printMatrix(outputT)
-	return map(list, outputT)		#fixing data structures, remove list of tuples in output
+	return outputT
+	#return np.asmatrix(outputT)
 
 def decisionMaker(gardenD):
 	global CounterTurn, CounterTurnDown, CounterTurnRight, CounterTurnUp, CounterTurnLeft
@@ -138,20 +140,20 @@ def decisionMaker(gardenD):
 	rightMatrix = turnEmul(Garden, "right")
 	upMatrix = turnEmul(Garden, "up")
 	leftMatrix = turnEmul(Garden, "left")
-	d = sum(sum(1 for i in row if i) for row in downMatrix)		#count all non-zero entries if turn arrow-down
-	r = sum(sum(1 for i in row if i) for row in rightMatrix)	
-	u = sum(sum(1 for i in row if i) for row in upMatrix)	
-	l = sum(sum(1 for i in row if i) for row in leftMatrix)	
+	d = np.count_nonzero(downMatrix)		#count all non-zero entries if turn arrow-down
+	r = np.count_nonzero(rightMatrix)	
+	u = np.count_nonzero(upMatrix)	
+	l = np.count_nonzero(leftMatrix)	
 	listD = [d, r, u, l]
 	#print listD
-	if any( [Garden == downMatrix, Garden == rightMatrix, Garden == upMatrix, Garden == leftMatrix] ):
-		if Garden != downMatrix :
+	if any( [np.array_equal(Garden, downMatrix) == True, np.array_equal(Garden, rightMatrix) == True, np.array_equal(Garden, upMatrix) == True, np.array_equal(Garden, leftMatrix) == True] ):
+		if np.array_equal(Garden, downMatrix) == False :
 			decision = "down"
-		elif Garden != rightMatrix :
+		elif np.array_equal(Garden, rightMatrix) == False :
 			decision = "right"
-		elif Garden != upMatrix :
+		elif np.array_equal(Garden, upMatrix) == False :
 			decision = "up"
-		elif Garden != leftMatrix :
+		elif np.array_equal(Garden, leftMatrix) == False :
 			decision = "left"
 		else:
 			gameTimer("stop")
@@ -194,10 +196,7 @@ while True:
 		growth(seeds)
 	elif response in action:
 		gameTimer("start")
-		seeds = driver.find_elements_by_class_name("tile")
-		growth(seeds)
-		print decisionMaker(Garden)
-		time.sleep(3)
+		time.sleep(5)
 		gameTimer("stop")
 		print gameTimer("show")
 	elif response in play:
