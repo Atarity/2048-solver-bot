@@ -18,5 +18,5 @@ ToDo:
  7. Spacebar pause
  8. ~~def printMatrix()~~
  9. ~~Turns percentage~~
- 10. Avoid eval() for proper scoring
+ 10. ~~Avoid eval() for proper public scoring~~
  11. ~~def printSummary()~~

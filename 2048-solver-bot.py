@@ -1,4 +1,5 @@
 import os, time, re, sys, csv, datetime, itertools, timeit
+import numpy as np
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 
@@ -11,6 +12,7 @@ assert "2048" in driver.title
 
 Version = "0.0.5"
 Garden = [[0 for _ in range (4)] for _ in range (4)]	#global matrix for storing tiles state
+#Garden = np.zeros((4, 4))
 TimerStart = 0 
 TimerStop = 0
 CounterTurn, CounterTurnDown, CounterTurnRight, CounterTurnUp, CounterTurnLeft = 0, 0, 0, 0, 0
@@ -57,8 +59,8 @@ def printSummary():		#print summary after game finished
 
 def getPubScore():		#get game score
 	score = driver.find_element_by_class_name("score-container")
-	pubScore = eval(score.get_attribute("innerText"))		#remove eval(), use re
-	return str(pubScore)
+	pubScore = re.split('\+', score.get_attribute("innerText"))		#split string on "+" and save 1st part
+	return str(pubScore[0])
 
 def printMatrix(matrixP):
 	for row in matrixP:
@@ -70,11 +72,12 @@ def printMatrix(matrixP):
 def growth(gardenG):
 	global Garden
 	Garden = [[0 for _ in range (4)] for _ in range (4)]
+	#Garden = np.zeros((4, 4), dtype=np.int)
 	for i in gardenG:
 		mes = re.findall(r"\d+", str(i.get_attribute("class")))		#take only digits from class-name
 		Garden[int(mes[2])-1][int(mes[1])-1] = int(mes[0])		#put it to the 2D matrix
-	#print "Garden:"
-	#printMatrix(Garden)
+	print "Garden:"
+	printMatrix(Garden)
 
 def zeroRemove(lineZ):		#deleting all zeroes from list
 	for k in range(0, 3):
