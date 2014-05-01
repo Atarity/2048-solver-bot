@@ -9,10 +9,11 @@ driver = webdriver.Chrome(chromedriver)
 driver.get("http://gabrielecirulli.github.io/2048/")
 assert "2048" in driver.title
 
-Version = "0.0.4"
+Version = "0.0.5"
 Garden = [[0 for _ in range (4)] for _ in range (4)]	#global matrix for storing tiles state
 TimerStart = 0 
 TimerStop = 0
+CounterTurn, CounterTurnDown, CounterTurnRight, CounterTurnUp, CounterTurnLeft = 0, 0, 0, 0, 0
 
 def gameTimer(standbyG):
 	global TimerStart, TimerStop
@@ -27,8 +28,32 @@ def gameTimer(standbyG):
 def logToFile():
 	with open('ResultLog.csv', 'a',) as fp:		#write results to the file
 	    a = csv.writer(fp, delimiter=',')
-	    data = [Version, datetime.datetime.now().strftime("%d%B%Y %H:%M:%S"), getPubScore(), max(itertools.chain(*Garden)), gameTimer("show")]
+	    data = [Version, 
+	    		datetime.datetime.now().strftime("%d%B%Y %H:%M:%S"), 
+	    		getPubScore(), 
+	    		max(itertools.chain(*Garden)), 
+	    		gameTimer("show"), 
+	    		CounterTurn, 
+	    		round(float(CounterTurnDown) / CounterTurn * 100, 1), 
+	    		round(float(CounterTurnRight) / CounterTurn * 100, 1), 
+	    		round(float(CounterTurnUp) / CounterTurn * 100, 1), 
+	    		round(float(CounterTurnLeft) / CounterTurn * 100, 1), 
+	    		Garden]
 	    a.writerow(data)
+
+def printSummary():		#print summary after game finished
+	print " "
+	printMatrix(Garden)
+	print " "
+	print "Score: " + getPubScore()
+	print "MaxTile: " + str(max(itertools.chain(*Garden)))		#flatten Garden and found max tile
+	print "Turns total: " + str(CounterTurn)
+	print "      down: " + str(round(float(CounterTurnDown) / CounterTurn * 100, 1)) + "&"
+	print "      right: " + str(round(float(CounterTurnRight) / CounterTurn * 100, 1)) + "%"
+	print "      up: " + str(round(float(CounterTurnUp) / CounterTurn * 100, 1)) + "%"
+	print "      left: " + str(round(float(CounterTurnLeft) / CounterTurn * 100, 1)) + "%"
+	print "Time spent (m:s) : " + gameTimer("show")
+	print " "
 
 def getPubScore():		#get game score
 	score = driver.find_element_by_class_name("score-container")
@@ -48,8 +73,8 @@ def growth(gardenG):
 	for i in gardenG:
 		mes = re.findall(r"\d+", str(i.get_attribute("class")))		#take only digits from class-name
 		Garden[int(mes[2])-1][int(mes[1])-1] = int(mes[0])		#put it to the 2D matrix
-	print "Garden:"
-	printMatrix(Garden)
+	#print "Garden:"
+	#printMatrix(Garden)
 
 def zeroRemove(lineZ):		#deleting all zeroes from list
 	for k in range(0, 3):
@@ -100,11 +125,12 @@ def turnEmul(gardenT, direction):		#4 turn emulation depends on arrow direction
 		outputT = zip(*outputT)[::-1]
 	elif direction == "left":
 		outputT = zip(*outputT[::-1])
-	print "Emulated" + "-" + direction + ":"
-	printMatrix(outputT)
+	#print "Emulated" + "-" + direction + ":"
+	#printMatrix(outputT)
 	return map(list, outputT)		#fixing data structures, remove list of tuples in output
 
 def decisionMaker(gardenD):
+	global CounterTurn, CounterTurnDown, CounterTurnRight, CounterTurnUp, CounterTurnLeft
 	downMatrix = turnEmul(Garden, "down")
 	rightMatrix = turnEmul(Garden, "right")
 	upMatrix = turnEmul(Garden, "up")
@@ -114,7 +140,7 @@ def decisionMaker(gardenD):
 	u = sum(sum(1 for i in row if i) for row in upMatrix)	
 	l = sum(sum(1 for i in row if i) for row in leftMatrix)	
 	listD = [d, r, u, l]
-	print listD
+	#print listD
 	if any( [Garden == downMatrix, Garden == rightMatrix, Garden == upMatrix, Garden == leftMatrix] ):
 		if Garden != downMatrix :
 			decision = "down"
@@ -127,10 +153,7 @@ def decisionMaker(gardenD):
 		else:
 			gameTimer("stop")
 			logToFile()
-			print "Score: " + getPubScore()
-			print "MaxTile: " + str(max(itertools.chain(*Garden)))		#flatten Garden and found max tile
-			print "Time spent (m:s) : " + gameTimer("show")
-			print "Where is no way to solve it! Or it already solved.)"
+			printSummary()
 			driver.close()
 			sys.exit()
 	else:
@@ -142,6 +165,15 @@ def decisionMaker(gardenD):
 			decision = "up"
 		elif listD.index(min(listD)) == 3:
 			decision = "left"	
+	if decision == "down":
+		CounterTurnDown += 1 		#increment variable
+	if decision == "right":
+		CounterTurnRight += 1
+	if decision == "up":
+		CounterTurnUp += 1
+	if decision == "left":
+		CounterTurnLeft += 1
+	CounterTurn += 1
 	return decision
 
 while True:
