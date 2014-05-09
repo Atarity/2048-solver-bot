@@ -1,4 +1,4 @@
-import os, time, re, sys, csv, datetime, timeit, argparse
+import os, time, re, sys, csv, datetime, timeit, argparse, gc
 import numpy as np
 from operator import itemgetter
 from selenium import webdriver
@@ -26,8 +26,9 @@ parser.add_argument("-a", "--noanim", help="remove tile animation to speed up pr
 parser.add_argument("-g", "--games", help="play exact X games", action=gamesAction, metavar="X", type=int, default=1)
 parser.add_argument("-n", "--note", help="short note string (<140chrs) in \"quotes\" will add to csv with each game result", action=noteAction, metavar="STR", type=str, default="")
 parser.add_argument("-d", "--debug", help="reserved for debugging purposes", action="store_true")
+parser.add_argument("-l", "--loglevel", help="Verbose level from 0 to 2", choices=range(0, 3), metavar="X", type=int, default=1)
 args = parser.parse_args()
-#ArgDict = vars(args)
+ArgDict = vars(args)
 
 chromedriver = "/Users/user/Downloads/chromedriver"		#tricky part depends on bug in Python/Selenium, SO it
 os.environ["webdriver.chrome.driver"] = chromedriver
@@ -36,12 +37,13 @@ driver = webdriver.Chrome(chromedriver)
 driver.get("http://gabrielecirulli.github.io/2048/")
 assert "2048" in driver.title
 
-Version = "0.1.4"
+Version = "0.1.5"
 Garden = np.zeros((4, 4), dtype=np.int)		#global matrix for storing tiles state
 TimerStart, TimerStop = 0, 0
 CounterTurn, CounterTurnDown, CounterTurnRight, CounterTurnUp, CounterTurnLeft = 0, 0, 0, 0, 0
 InternalScore, ScoreCheck = 0, 0
 CounterGames = args.games
+Note = str(args.note).replace(",", " ")		#force remove all commas from notes
 
 def gameTimer(standbyG):		#game stopwatch
 	global TimerStart, TimerStop
@@ -59,6 +61,7 @@ def gameTimer(standbyG):		#game stopwatch
 		return time.strftime('%M:%S', time.localtime(overall))
 
 def logToFile():
+	global CounterTurn, CounterTurnDown, CounterTurnRight, CounterTurnUp, CounterTurnLeft, Garden, Note, Version
 	with open('ResultLog.csv', 'a',) as fp:		#write results to the file
 	    a = csv.writer(fp, delimiter=',')
 	    data = [Version, 
@@ -73,7 +76,7 @@ def logToFile():
 	    		round(float(CounterTurnUp) / CounterTurn * 100, 1), 
 	    		round(float(CounterTurnLeft) / CounterTurn * 100, 1), 
 	    		flattenGarden(),
-	    		args.note]
+	    		Note]
 	    a.writerow(data)
 
 def printSummary():		#print summary after game finished
@@ -119,8 +122,11 @@ def growth(gardenG):
 	for i in gardenG:
 		mes = re.findall(r"\d+", str(i.get_attribute("class")))		#take only digits from class-name
 		Garden[(int(mes[2])-1), (int(mes[1])-1)] = int(mes[0])		#put it to the 2D matrix
-	#print "Garden:"
-	#printMatrix(Garden)
+	
+	if args.loglevel > 0 :
+		if args.loglevel > 1 :
+			print "Garden:"
+			printMatrix(Garden)
 
 def zeroRemove(lineZ):		#deleting all zeroes from list
 	for k in range(0, 3):
@@ -225,9 +231,12 @@ def turnEmul(gardenT, direction):		#4 turn emulation depends on arrow direction
 	perspScore = perspCount(outputT)	
 	cornerScore = cornerCount(outputT)
 	#neighborScore = neighborsCheck(outputT)
-	print "Emulated" + "-" + direction + ":"
-	printMatrix(outputT)
-	print perspScore, cornerScore#, neighborScore
+	if args.loglevel > 0 :
+		if args.loglevel > 1 :
+			print "Emulated" + "-" + direction + ":"
+			printMatrix(outputT)
+			print "Persp: " + str(perspScore) + " Corner: " + str(cornerScore)#, neighborScore
+			print " "
 	return outputT, scoreT, perspScore, cornerScore#, neighborScore		#this will return tuple!
 
 def weightLifter(matrixW):		#taken DRUL matrix with values and compile list with turns priority on output
@@ -235,7 +244,6 @@ def weightLifter(matrixW):		#taken DRUL matrix with values and compile list with
 		matrixW[0, x] = 16 - matrixW[0, x]		#convert count of non-zeros into  zeros
 	k = np.sum(matrixW, axis=0)
 	tup = sorted([('down', k[0, 0]), ('right', k[0, 1]), ('up', k[0, 2]), ('left', k[0, 3])], key=lambda x: x[1])[::-1]			#list of tuples sorted by scores and inverted from max to min
-	#printMatrix(Garden)
 	return tup
 
 def decisionMaker(gardenD):
@@ -252,7 +260,15 @@ def decisionMaker(gardenD):
 					#(downNeiScore, rightNeiScore, upNeiScore, leftNeiScore),
 					(0, 0, 0, 0)])
 	tuplist = weightLifter(drul)
-	print tuplist
+	
+	if args.loglevel > 0 :
+		if args.loglevel > 1 :
+			print tuplist
+		else:						#loglevel = 1
+			for x in range (0, 4) :
+				print "{:4}".format(str(tuplist[x][0]) + ": " + str(tuplist[x][1])),
+			print 
+
 	if np.array_equal(Garden, map[tuplist[0][0]]) == False :
 		decision = tuplist[0][0]
 	elif np.array_equal(Garden, map[tuplist[1][0]]) == False :
@@ -265,11 +281,13 @@ def decisionMaker(gardenD):
 		gameTimer("stop")
 		logToFile()
 		printSummary()
+		gc.collect()
 
 		time.sleep(0.5)
 		TimerStart, TimerStop = 0, 0
 		CounterTurn, CounterTurnDown, CounterTurnRight, CounterTurnUp, CounterTurnLeft = 0, 0, 0, 0, 0
 		InternalScore, ScoreCheck = 0, 0
+		gameTimer("start")
 		retryBtn = driver.find_element_by_class_name("retry-button")
 		retryBtn.click()
 		CounterGames -= 1
@@ -281,7 +299,7 @@ def decisionMaker(gardenD):
 			return None
 
 	if decision == "down":
-		CounterTurnDown += 1 		#increment variable
+		CounterTurnDown += 1 
 		ScoreCheck = ScoreCheck + downScore
 	if decision == "right":
 		CounterTurnRight += 1
@@ -293,7 +311,11 @@ def decisionMaker(gardenD):
 		CounterTurnLeft += 1
 		ScoreCheck = ScoreCheck + leftScore
 	CounterTurn += 1
-	print decision.upper()
+	
+	if args.loglevel > 0 :
+		if args.loglevel > 1 :
+			print decision.upper()
+
 	return decision
 
 while args.debug == True:				#debug mode with old raw_input() interface
@@ -306,7 +328,7 @@ while args.debug == True:				#debug mode with old raw_input() interface
 	play = ["play", "pl"]
 	response = raw_input()
 	if response in action:
-		#print ArgDict
+		print ArgDict
 		print args.games
 	elif response in play:
 		element = driver.find_element_by_tag_name("body")
