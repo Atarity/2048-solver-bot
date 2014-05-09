@@ -9,12 +9,12 @@ Dependencies:
 ToDo:
 
  1. ~~Migrate math to NumPy~~
- 2. Run solver with args (~~play~~, logs, ~~run exact games count~~, ~~job notes~~, ~~debug~~)
+ 2. Run solver with args (~~play~~, logs, ~~noanimation~~, ~~run exact games count~~, ~~job notes~~, ~~debug~~)
  3. ~~Version log~~
  4. ~~Games results logging into csv~~ (~~ver~~, ~~date~~, ~~time~~, ~~turns~~, ~~score~~, ~~max tile~~, ~~final Garden flatten~~)
  5. ~~def getScore()~~
  6. ~~Internal scoring system for decision maker~~
- 7. Spacebar pause
+ 7. Spacebar pause + show current game stats
  8. ~~def printMatrix()~~
  9. ~~Turns percentage~~
  10. ~~Avoid eval() for proper public scoring~~
@@ -30,4 +30,6 @@ ToDo:
  20. Fix: TPS in multiple games
  21. Fix: remove commas from note before csv write
  22. Fix: use unicode for notes
- 23. Remove animation to improve speed
+ 23. ~~Remove animation to improve speed~~
+ 24. ~~Force close new mobile apps banner~~
+ 25. Fix: innternal score counter

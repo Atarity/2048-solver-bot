@@ -22,6 +22,7 @@ class noteAction(argparse.Action):
 
 parser = argparse.ArgumentParser(description="This bot will try to solve 2048 puzzle game which hosted on http://gabrielecirulli.github.io/2048/")
 parser.add_argument("-p", "--play", help="immediately starts playing", action="store_true")
+parser.add_argument("-a", "--noanim", help="remove tile animation to speed up process", action="store_true")
 parser.add_argument("-g", "--games", help="play exact X games", action=gamesAction, metavar="X", type=int, default=1)
 parser.add_argument("-n", "--note", help="short note string (<140chrs) in \"quotes\" will add to csv with each game result", action=noteAction, metavar="STR", type=str, default="")
 parser.add_argument("-d", "--debug", help="reserved for debugging purposes", action="store_true")
@@ -35,7 +36,7 @@ driver = webdriver.Chrome(chromedriver)
 driver.get("http://gabrielecirulli.github.io/2048/")
 assert "2048" in driver.title
 
-Version = "0.1.3"
+Version = "0.1.4"
 Garden = np.zeros((4, 4), dtype=np.int)		#global matrix for storing tiles state
 TimerStart, TimerStop = 0, 0
 CounterTurn, CounterTurnDown, CounterTurnRight, CounterTurnUp, CounterTurnLeft = 0, 0, 0, 0, 0
@@ -295,7 +296,11 @@ def decisionMaker(gardenD):
 	print decision.upper()
 	return decision
 
-while args.debug == True:
+while args.debug == True:				#debug mode with old raw_input() interface
+	if args.noanim == True :
+		with open ("without-animation.js", "r") as myfile :
+			data = myfile.read().replace('\n', '')
+		driver.execute_script(data)
 	quit = ["stop", "exit", "quit", "q"]
 	action = ["action", "act"]
 	play = ["play", "pl"]
@@ -326,18 +331,10 @@ while args.debug == True:
 
 while args.play == True:
 	element = driver.find_element_by_tag_name("body")      
-	with open ("without-animation.js", "r") as myfile :
-		data = myfile.read().replace('\n', '')
-	driver.execute_script(data)
-	"""driver.execute_script(
-		"var css = document.createElement(\"style\");" +
-		"css.type = \"text/css\";" +
-		"css.innerHTML = \".tile { -webkit-transition : none !important; transition : none !important; } .tile-merged .tile-inner { -webkit-animation : none !important; animation : none !important; } .tile-new .tile-inner { -webkit-animation : none !important; animation : none !important; }\";" +
-		"document.body.appendChild(css);" 
-		#"$tile.addClass(\"notransition\");" +
-		#"$tile-new.addClass(\"noanimation\");" +
-		#"$tile-merged.addClass(\"noanimation\");"
-		)"""
+	if args.noanim == True :								#run script thru selenium if user turn off tile animation
+		with open ("without-animation.js", "r") as myfile :
+			data = myfile.read().replace('\n', '')
+		driver.execute_script(data)
 	gameTimer("start")
 	while True:
 		seeds = driver.find_elements_by_class_name("tile")
