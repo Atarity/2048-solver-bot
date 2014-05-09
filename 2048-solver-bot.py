@@ -26,7 +26,7 @@ parser.add_argument("-g", "--games", help="play exact X games", action=gamesActi
 parser.add_argument("-n", "--note", help="short note string (<140chrs) in \"quotes\" will add to csv with each game result", action=noteAction, metavar="STR", type=str, default="")
 parser.add_argument("-d", "--debug", help="reserved for debugging purposes", action="store_true")
 args = parser.parse_args()
-ArgDict = vars(args)
+#ArgDict = vars(args)
 
 chromedriver = "/Users/user/Downloads/chromedriver"		#tricky part depends on bug in Python/Selenium, SO it
 os.environ["webdriver.chrome.driver"] = chromedriver
@@ -44,6 +44,7 @@ CounterGames = args.games
 
 def gameTimer(standbyG):		#game stopwatch
 	global TimerStart, TimerStop
+	overall = 0
 	if standbyG == "start":
 		TimerStart = timeit.default_timer()
 	elif standbyG == "stop":
@@ -300,7 +301,7 @@ while args.debug == True:
 	play = ["play", "pl"]
 	response = raw_input()
 	if response in action:
-		print ArgDict
+		#print ArgDict
 		print args.games
 	elif response in play:
 		element = driver.find_element_by_tag_name("body")
@@ -324,7 +325,19 @@ while args.debug == True:
 		sys.exit()
 
 while args.play == True:
-	element = driver.find_element_by_tag_name("body")
+	element = driver.find_element_by_tag_name("body")      
+	with open ("without-animation.js", "r") as myfile :
+		data = myfile.read().replace('\n', '')
+	driver.execute_script(data)
+	"""driver.execute_script(
+		"var css = document.createElement(\"style\");" +
+		"css.type = \"text/css\";" +
+		"css.innerHTML = \".tile { -webkit-transition : none !important; transition : none !important; } .tile-merged .tile-inner { -webkit-animation : none !important; animation : none !important; } .tile-new .tile-inner { -webkit-animation : none !important; animation : none !important; }\";" +
+		"document.body.appendChild(css);" 
+		#"$tile.addClass(\"notransition\");" +
+		#"$tile-new.addClass(\"noanimation\");" +
+		#"$tile-merged.addClass(\"noanimation\");"
+		)"""
 	gameTimer("start")
 	while True:
 		seeds = driver.find_elements_by_class_name("tile")
