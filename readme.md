@@ -6,7 +6,11 @@ Dependencies:
  - [Python 2.7](http://www.python.org) with [NumPy](http://www.numpy.org/) library
  - [Selenium](https://pypi.python.org/pypi/selenium) with [ChromeDriver](https://code.google.com/p/chromedriver/)
 
-After installing ChromeDriver it needs to determine binaries location in script line `chromedriver = "/Users/user/Downloads/chromedriver"`
+After installing ChromeDriver it needs to determine binaries location in script line:
+
+`chromedriver = "/Users/user/Downloads/chromedriver"`
+
+------------------
 
 ToDo:
 
