@@ -10,9 +10,7 @@ After installing ChromeDriver it needs to determine binaries location in script 
 
 `chromedriver = "/Users/user/Downloads/chromedriver"`
 
-------------------
-
-ToDo:
+##ToDo:
 
  1. ~~Migrate math to NumPy~~
  2. ~~Run solver with args~~ (~~play~~, ~~logs~~, ~~noanimation~~, ~~run exact games count~~, ~~job notes~~, ~~debug~~)
@@ -29,7 +27,7 @@ ToDo:
  13. ~~Remove intertools~~
  14. ~~Criteria: Numb of identical tiles on one line after turn~~
  15. ~~Criteria: Max board tile is in a corner~~
- 16. Criteria: Max 8 board tiles is in one sector
+ 16. Criteria: Max 8 board tiles is in one sector or idealGarden match
  17. Unified cosmo credit system based on max turn score
  18. ~~Loglevel~~
  19. ~~Wait until page loading?? OK fuck this shit~~
@@ -39,3 +37,5 @@ ToDo:
  23. ~~Remove animation to improve speed~~
  24. ~~Force close new mobile apps banner~~
  25. Fix: internal score counter
+ 26. Coefs thru args
+ 27. Stand-alone batch script with instances control and args tuning

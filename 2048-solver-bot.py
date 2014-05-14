@@ -17,7 +17,6 @@ class noteAction(argparse.Action):
         	parser.error("Please, use quotes \" \" to determine you note as argument")
         if len(values) > 140 :
             parser.error("Too long note. Make it Twitter-way with no longer than 140 chars")
-            #raise argparse.ArgumentError("Minimum bandwidth is 12")
         setattr(namespace, self.dest, values)
 
 parser = argparse.ArgumentParser(description="This bot will try to solve 2048 puzzle game which hosted on http://gabrielecirulli.github.io/2048/")
@@ -42,6 +41,7 @@ Garden = np.zeros((4, 4), dtype=np.int)		#global matrix for storing tiles state
 TimerStart, TimerStop = 0, 0
 CounterTurn, CounterTurnDown, CounterTurnRight, CounterTurnUp, CounterTurnLeft = 0, 0, 0, 0, 0
 InternalScore, ScoreCheck = 0, 0
+EmptyMod, ScoreMod, CornerMod, PerspMod = 1, 1, 1, 1 
 CounterGames = args.games
 Note = str(args.note).replace(",", " ")		#force remove all commas from notes
 
@@ -95,7 +95,7 @@ def printSummary():		#print summary after game finished
 	print "Turns per sec: " + str(round(CounterTurn / float(gameTimer("tps")), 2))
 	print " "
 
-def getPubScore():		#get game score
+def getPubScore():		#get game score from web page
 	score = driver.find_element_by_class_name("score-container")
 	pubScore = re.split('\+', score.get_attribute("innerText"))		#split string on "+" and save 1st part
 	return str(pubScore[0])
@@ -184,23 +184,39 @@ def neighborsCheck(matrixN):
     return nScore
 """
 def perspCount(inputP):
+	global PerspMod
 	pCount = 0
 	for x in range(0, 4):
 		for i in range(0, 3):
 			if inputP[i, x] != 0 and inputP[i, x] == inputP[i+1, x] :
-				pCount += 1
+				pCount += inputP[i, x] 								#increase perp score by tile value
 	for x in range(0, 4):
 		for i in range(0, 3):
 			if inputP[x, i] != 0 and inputP[x, i] == inputP[x, i+1] :
-				pCount += 1
-	return pCount
+				pCount += inputP[x, i]
+	return pCount * PerspMod
 
-def cornerCount(inputC):
+def cornerCount(inputC):		#got scores if max garden tile are in one of the corner
+	global CornerMod
 	cornerScore = 0
 	max = np.amax(inputC)
 	if any([inputC[0, 0] == max, inputC[0, 3] == max, inputC[3, 0] == max, inputC[3, 3] == max]) :
-		cornerScore += 2
-	return cornerScore
+		cornerScore += (max / 4)
+	return cornerScore * CornerMod
+
+"""def idealTurnCount(inputI):
+	idealTurnScore = 0
+	i, j = np.where(inputI == np.amax(inputI)) 			#get index of max element
+    if i[0] < 2 and j[0] < 2 :							#max tile in 1st quarter
+
+    elif i[0] < 2 and j[0] >= 2:  
+
+    elif i[0] >= 2 and j[0] >= 2:
+
+    elif i[0] >= 2 and j[0] < 2 :
+
+    return idealTurnScore"""
+
 
 def turnEmul(gardenT, direction):		#4 turn emulation depends on arrow direction
 	global InternalScore
@@ -239,9 +255,16 @@ def turnEmul(gardenT, direction):		#4 turn emulation depends on arrow direction
 			print " "
 	return outputT, scoreT, perspScore, cornerScore#, neighborScore		#this will return tuple!
 
+#DRUL matrix cols reperesentes emulated turns: Down, Right, Up, Left and rows is criteria scores
+#Number of zeroes tiles after turn (< is better)
+#Turn score
+#Perspective (after turn analysis) scores
+#Corner scores
 def weightLifter(matrixW):		#taken DRUL matrix with values and compile list with turns priority on output
+	global EmptyMod, ScoreMod
 	for x in range(0, 4):
-		matrixW[0, x] = 16 - matrixW[0, x]		#convert count of non-zeros into  zeros
+		matrixW[0, x] = (16 - matrixW[0, x]) *	EmptyMod	#convert count of non-zeros into zeros and apply Mod
+		matrixW[1, x] *= ScoreMod 							#apply ScoreMod to score row
 	k = np.sum(matrixW, axis=0)
 	tup = sorted([('down', k[0, 0]), ('right', k[0, 1]), ('up', k[0, 2]), ('left', k[0, 3])], key=lambda x: x[1])[::-1]			#list of tuples sorted by scores and inverted from max to min
 	return tup
