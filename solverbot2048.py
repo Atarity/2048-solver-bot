@@ -53,14 +53,15 @@ parser.add_argument("-mp", "--perspmod", help="\"Perspective\" modificator value
 args = parser.parse_args()
 ArgDict = vars(args)  #used for debugging only
 
-chromedriver = "/Users/user/Downloads/chromedriver"  #tricky part depends on bug in Python/Selenium, SO it
+#chromedriver = "/Users/user/Downloads/chromedriver"  #tricky part depends on bug in Python/Selenium, SO it
+chromedriver = "D:\chromedriver.exe"
 os.environ["webdriver.chrome.driver"] = chromedriver
 driver = webdriver.Chrome(chromedriver)
 
 driver.get("http://gabrielecirulli.github.io/2048/")
 assert "2048" in driver.title
 
-Version = "0.1.6"
+Version = "0.1.7"
 Garden = np.zeros((4, 4), dtype=np.int)  #global matrix for storing tiles state
 TimerStart, TimerStop = 0, 0
 CounterTurn, CounterTurnDown, CounterTurnRight, CounterTurnUp, CounterTurnLeft = 0, 0, 0, 0, 0
