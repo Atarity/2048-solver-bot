@@ -1,9 +1,10 @@
 import os, time, re, sys, csv, datetime, timeit, argparse, gc
 import numpy as np
+import itertools
 from operator import itemgetter
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
-
+import snake
 
 class gamesAction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
@@ -67,6 +68,7 @@ InternalScore, ScoreCheck = 0, 0
 EmptyMod, ScoreMod, CornerMod, PerspMod = args.emptymod, args.scoremod, args.cornermod, args.perspmod
 CounterGames = args.games
 Note = str(args.note).replace(",", " ")  #force remove all commas from notes
+KeepGoing = False           #is 2048 tile reached and game continued?
 
 
 def gameTimer(standbyG):  #game stopwatch
@@ -212,6 +214,26 @@ def cornerCount(inputC):  #got scores if max garden tile are in one of the corne
     return cornerScore
 
 
+def getPerfectList(a2d):
+    """
+    :type a2d: np.ndarray
+    :rtype : iterable
+    returns perfect-sorted list
+    """
+    return sorted(snake.SnakeUnfolder(a2d), reverse=True)
+
+
+def getPerfectDiff(a2d):
+    """
+    :type a2d: np.ndarray
+    :rtype : float
+    returns difference between perfect-sorted list (i.e. 2,4,8,4 4,2,8,4)
+    """
+    pl = getPerfectList(a2d)
+    distmap = [i for i in range(0, len(pl))]
+    return reduce(lambda a, (d, (p, l)): a - (abs(p-l)*0.05 if p != l and l != 0 else ( abs(p-l)*0.07 if l == 0 else 0) ) , zip(distmap, zip(pl, snake.SnakeUnfolder(a2d))), 0)
+
+
 def turnEmul(gardenT, direction):  #4 turn emulation depends on arrow direction
     global InternalScore
     InternalScore = 0
@@ -237,7 +259,10 @@ def turnEmul(gardenT, direction):  #4 turn emulation depends on arrow direction
     scoreT = InternalScore
     perspScore = perspCount(outputT)
     cornerScore = cornerCount(outputT)
-    zerosScore = 16 - np.count_nonzero(outputT)  #convert count of non-zeros into zeros
+    before = 16 - np.count_nonzero(gardenT)
+    after = 16 - np.count_nonzero(outputT)
+    zerosScore =  after - before  #convert count of non-zeros into zeros
+    perfectnessScore = getPerfectDiff(outputT)
     if args.loglevel > 0:
         if args.loglevel > 1:
             print "Emulated" + "-" + direction + ":"
@@ -245,7 +270,7 @@ def turnEmul(gardenT, direction):  #4 turn emulation depends on arrow direction
             print "Zeors: " + str(zerosScore) + " Score: " + str(scoreT) + " Persp: " + str(
                 perspScore) + " Corner: " + str(cornerScore)  #, neighborScore
             print " "
-    return outputT, zerosScore, scoreT, perspScore, cornerScore  #this will return tuple!
+    return outputT, zerosScore, scoreT, perspScore, cornerScore, perfectnessScore  #this will return tuple!
 
 
 #					DRUL matrix cols reperesentes emulated turns: Down, Right, Up, Left and rows is criteria scores
@@ -253,10 +278,10 @@ def turnEmul(gardenT, direction):  #4 turn emulation depends on arrow direction
 #Turn score
 #Perspective (after-turn analysis) scores
 #Corner scores
-def weightLifter(matrixW):  #taken DRUL matrix with values and compile list with turns priority on output
+def weightLifter(freespace, matrixW):  #taken DRUL matrix with values and compile list with turns priority on output
     global EmptyMod, ScoreMod, PerspMod, CornerMod
     for x in range(0, 4):
-        matrixW[0, x] *= EmptyMod
+        matrixW[0, x] *= EmptyMod * ( 1000 if freespace < 6 else 1 )
         matrixW[1, x] *= ScoreMod  #apply ScoreMod to score row
         matrixW[2, x] *= PerspMod
         matrixW[3, x] *= CornerMod
@@ -272,24 +297,32 @@ def weightLifter(matrixW):  #taken DRUL matrix with values and compile list with
 
 
 def decisionMaker(gardenD):
-    global CounterTurn, CounterTurnDown, CounterTurnRight, CounterTurnUp, CounterTurnLeft, ScoreCheck, CounterGames
-    downMatrix, downZeros, downScore, downPersp, downCorSore = turnEmul(Garden,
-                                                                        "down")  #unpack returned tuple of matrix and int score
-    rightMatrix, rightZeros, rightScore, rightPersp, rightCorScore = turnEmul(Garden, "right")
-    upMatrix, upZeros, upScore, upPersp, upCorScore = turnEmul(Garden, "up")
-    leftMatrix, leftZeros, leftScore, leftPersp, leftCorScore = turnEmul(Garden, "left")
+    global CounterTurn, CounterTurnDown, CounterTurnRight, CounterTurnUp, CounterTurnLeft, ScoreCheck, CounterGames, KeepGoing, TimerStart, TimerStop
+
+    if np.amax(gardenD) == 2048 and KeepGoing == False :
+        time.sleep(3)
+        kpbtn = driver.find_element_by_class_name("keep-playing-button")
+        kpbtn.click()
+        KeepGoing = True
+        time.sleep(1)
+
+    downMatrix, downZeros, downScore, downPersp, downCorSore, downPerfect = turnEmul(Garden, "down")  #unpack returned tuple of matrix and int score
+    rightMatrix, rightZeros, rightScore, rightPersp, rightCorScore, rightPerfect = turnEmul(Garden, "right")
+    upMatrix, upZeros, upScore, upPersp, upCorScore, upPerfect = turnEmul(Garden, "up")
+    leftMatrix, leftZeros, leftScore, leftPersp, leftCorScore, leftPerfect = turnEmul(Garden, "left")
     map = {'down': downMatrix, 'right': rightMatrix, 'up': upMatrix, 'left': leftMatrix}
     drul = np.matrix([(downZeros, rightZeros, upZeros, leftZeros),
                       (downScore, rightScore, upScore, leftScore),
                       (downPersp, rightPersp, upPersp, leftPersp),
                       (downCorSore, rightCorScore, upCorScore, leftCorScore),
-                      (0, 0, 0, 0)])
-    tuplist = weightLifter(drul)
+                      (downPerfect, rightPerfect, upPerfect, leftPerfect),
+                      (-1000, 0, 0, 0)])
+    tuplist = weightLifter(reduce(lambda a, x: a+1 if x == 0 else a, Garden.flatten(), 0),drul)
 
     if args.loglevel > 0:
         if args.loglevel > 1:
             print tuplist
-        else:  #loglevel = 1
+        else:                           #loglevel = 1
             for x in range(0, 4):
                 print "{:4}".format(str(tuplist[x][0]) + ": " + str(tuplist[x][1])),
             print
@@ -312,6 +345,7 @@ def decisionMaker(gardenD):
         TimerStart, TimerStop = 0, 0
         CounterTurn, CounterTurnDown, CounterTurnRight, CounterTurnUp, CounterTurnLeft = 0, 0, 0, 0, 0
         InternalScore, ScoreCheck = 0, 0
+        KeepGoing = False
         gameTimer("start")
         retryBtn = driver.find_element_by_class_name("retry-button")
         retryBtn.click()
