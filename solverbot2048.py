@@ -53,8 +53,8 @@ parser.add_argument("-mp", "--perspmod", help="\"Perspective\" modificator value
 args = parser.parse_args()
 ArgDict = vars(args)  #used for debugging only
 
-#chromedriver = "/Users/user/Downloads/chromedriver"  #tricky part depends on bug in Python/Selenium, SO it
-chromedriver = "D:\chromedriver.exe"
+#chromedriver = "/Users/user/Downloads/chromedriver"  #tricky part depends on bug in Python/Selenium, SO it (OS X)
+chromedriver = "D:\chromedriver.exe"                    # WIN path
 os.environ["webdriver.chrome.driver"] = chromedriver
 driver = webdriver.Chrome(chromedriver)
 
