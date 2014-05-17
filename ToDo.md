@@ -1,14 +1,27 @@
 ###General
 
 - [x] Migrate math to NumPy
-- [x] Run solver with args (play, logs, noanimation, run exact games count, job notes, debug)
+- [x] Run solver with args
 	- [x] play
+	- [x] logs
+	- [x] noanimation
+	- [x] run exact games count
+	- [x] job notes
+	- [x] debug
 - [x] Version log
-- [x] Games results logging into csv (ver, date, time, turns, score, max tile, final Garden flatten)
+- [x] Games results logging into csv
 	- [x] ver
+	- [x] date
+	- [x] time
+	- [x] turns
+	- [x] score
+	- [x] max tile
+	- [x] final Garden flatten
 - [x] def getScore()
 - [x] Internal scoring system for decision maker
-- [ ] Spacebar pause + show current game stats
+- [ ] Spacebar pause
+	- [ ] show current game stats
+	- [ ] temporary manual handling
 - [x] def printMatrix()
 - [x] Turns percentage
 - [x] Avoid eval() for proper public scoring
@@ -25,8 +38,8 @@
 - [x] Coefs thru args
 - [x] Batch laucher
 	- [x] Run multiple thru subprocess
-	- [ ] MOD for GamesCounter
-- [ ] Gitignore for PyCharm
+	- [x] MOD for GamesCounter
+- [x] Gitignore for Py
 
 ###To fix
  - [x] Fix: TPS in multiple games

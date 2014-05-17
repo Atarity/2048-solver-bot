@@ -1,4 +1,4 @@
-import subprocess, argparse
+import subprocess, argparse, sys
 
 class gamesAction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
@@ -21,6 +21,16 @@ args = parser.parse_args()
 GamesCounter = args.games
 MaxInstances = args.instances
 
-for x in range (0, MaxInstances) :
-	subprocess.Popen(["python", "solverbot2048.py", "-p", "-l 0", "-g " + str(int(round(GamesCounter/MaxInstances))), "-n " + str(GamesCounter) + " games on " + str(MaxInstances) + " instances"])
-exit()
+"""for x in range (0, 3):
+    print "\"" + str(GamesCounter) + " games on " + str(MaxInstances) + " instances" + "\""
+"""
+if GamesCounter % MaxInstances == 0 :           #mod, 15 % 4 = 3
+    for x in range (0, MaxInstances) :
+    	subprocess.Popen(["python", "2048-solver-bot.py", "-p", "-l 0", "-g " + str(int(round(GamesCounter/MaxInstances))), "-n" + str(GamesCounter) + " games on " + str(MaxInstances) + " instances"])
+#    sys.exit()
+else :
+    subprocess.Popen(["python", "2048-solver-bot.py", "-p", "-l 0", "-g " + str(int(round(GamesCounter/MaxInstances)) + (GamesCounter % MaxInstances)), "-n" + str(GamesCounter) + " games on " + str(MaxInstances) + " instances"])
+    for x in range (0, MaxInstances - 1) :
+        subprocess.Popen(["python", "2048-solver-bot.py", "-p", "-l 0", "-g " + str(int(round(GamesCounter/MaxInstances))), "-n" + str(GamesCounter) + " games on " + str(MaxInstances) + " instances"])
+#    sys.exit()
+sys.exit()
