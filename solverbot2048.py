@@ -10,6 +10,7 @@ class gamesAction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
         if values <= 0 or values > 1000:
             parser.error("Games to play number should be in range 1..1000")
+            #raise argparse.ArgumentError("Minimum bandwidth is 12")
         setattr(namespace, self.dest, values)
 
 
@@ -17,6 +18,7 @@ class modsAction(argparse.Action):
     def __call__(self, parser, namespace, values, option_string=None):
         if values < -1000 or values > 1000:
             parser.error("Modificator value should be in range -1000..1000")
+            #raise argparse.ArgumentError("Minimum bandwidth is 12")
         setattr(namespace, self.dest, values)
 
 
@@ -48,12 +50,10 @@ parser.add_argument("-mc", "--cornermod", help="\"Corner\" modificator value", a
                     default=1)
 parser.add_argument("-mp", "--perspmod", help="\"Perspective\" modificator value", action=modsAction, metavar="X",
                     type=float, default=1)
-parser.add_argument("-mr", "--perfmod", help="\"Perfect snake\" modificator value", action=modsAction, metavar="X",
-                    type=float, default=1)
 args = parser.parse_args()
 ArgDict = vars(args)  #used for debugging only
 
-#chromedriver = "/Users/user/Downloads/chromedriver"    #tricky part depends on bug in Python/Selenium, SO it (OS X)
+#chromedriver = "/Users/user/Downloads/chromedriver"  #tricky part depends on bug in Python/Selenium, SO it (OS X)
 chromedriver = "D:\chromedriver.exe"                    # WIN path
 os.environ["webdriver.chrome.driver"] = chromedriver
 driver = webdriver.Chrome(chromedriver)
@@ -66,9 +66,9 @@ Garden = np.zeros((4, 4), dtype=np.int)  #global matrix for storing tiles state
 TimerStart, TimerStop = 0, 0
 CounterTurn, CounterTurnDown, CounterTurnRight, CounterTurnUp, CounterTurnLeft = 0, 0, 0, 0, 0
 InternalScore, ScoreCheck = 0, 0
-EmptyMod, ScoreMod, CornerMod, PerspMod, PerfectMod = args.emptymod, args.scoremod, args.cornermod, args.perspmod, args.perfmod
+EmptyMod, ScoreMod, CornerMod, PerspMod = args.emptymod, args.scoremod, args.cornermod, args.perspmod
 CounterGames = args.games
-Note = str(args.note).replace(",", " ").rstrip('\n')  #force remove all commas from notes and \n
+Note = str(args.note).replace(",", " ")  #force remove all commas from notes
 KeepGoing = False           #is 2048 tile reached and game continued?
 
 
@@ -268,7 +268,7 @@ def turnEmul(gardenT, direction):  #4 turn emulation depends on arrow direction
         if args.loglevel > 1:
             print "Emulated" + "-" + direction + ":"
             printMatrix(outputT)
-            print "Zeros: " + str(zerosScore) + " Score: " + str(scoreT) + " Persp: " + str(
+            print "Zeors: " + str(zerosScore) + " Score: " + str(scoreT) + " Persp: " + str(
                 perspScore) + " Corner: " + str(cornerScore)  #, neighborScore
             print " "
     return outputT, zerosScore, scoreT, perspScore, cornerScore, perfectnessScore  #this will return tuple!
@@ -279,15 +279,13 @@ def turnEmul(gardenT, direction):  #4 turn emulation depends on arrow direction
 #Turn score
 #Perspective (after-turn analysis) scores
 #Corner scores
-#Perfect snake scores
 def weightLifter(freespace, matrixW):  #taken DRUL matrix with values and compile list with turns priority on output
-    global EmptyMod, ScoreMod, PerspMod, CornerMod, PerfectMod
+    global EmptyMod, ScoreMod, PerspMod, CornerMod
     for x in range(0, 4):
         matrixW[0, x] *= EmptyMod * ( 1000 if freespace < 6 else 1 )
-        matrixW[1, x] *= ScoreMod       #apply ScoreMod to score row
+        matrixW[1, x] *= ScoreMod  #apply ScoreMod to score row
         matrixW[2, x] *= PerspMod
         matrixW[3, x] *= CornerMod
-        matrixW[4, x] *= PerfectMod
     k = np.sum(matrixW, axis=0)
     tup = sorted([('down', k[0, 0]), ('right', k[0, 1]), ('up', k[0, 2]), ('left', k[0, 3])], key=lambda x: x[1])[
           ::-1]  #list of tuples sorted by scores and inverted from max to min
@@ -320,7 +318,7 @@ def decisionMaker(gardenD):
                       (downCorSore, rightCorScore, upCorScore, leftCorScore),
                       (downPerfect, rightPerfect, upPerfect, leftPerfect),
                       (-1000, 0, 0, 0)])
-    tuplist = weightLifter(16 - np.non-zeros(Garden), drul)
+    tuplist = weightLifter(reduce(lambda a, x: a+1 if x == 0 else a, Garden.flatten(), 0),drul)
 
     if args.loglevel > 0:
         if args.loglevel > 1:
@@ -362,16 +360,16 @@ def decisionMaker(gardenD):
 
     if decision == "down":
         CounterTurnDown += 1
-        ScoreCheck += downScore
-    elif decision == "right":
+        ScoreCheck = ScoreCheck + downScore
+    if decision == "right":
         CounterTurnRight += 1
-        ScoreCheck += rightScore
-    elif decision == "up":
+        ScoreCheck = ScoreCheck + rightScore
+    if decision == "up":
         CounterTurnUp += 1
-        ScoreCheck += upScore
-    elif decision == "left":
+        ScoreCheck = ScoreCheck + upScore
+    if decision == "left":
         CounterTurnLeft += 1
-        ScoreCheck += leftScore
+        ScoreCheck = ScoreCheck + leftScore
     CounterTurn += 1
 
     if args.loglevel > 0:
@@ -434,4 +432,7 @@ while args.play == True:
         elif d == "left":
             element.send_keys(Keys.ARROW_LEFT)
         time.sleep(0.1)
+
+
+
 
