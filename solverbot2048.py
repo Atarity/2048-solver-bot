@@ -177,7 +177,7 @@ def powerPerform(lineP):  #make tile multiplication
     for i in range(0, 3):
         if lineP[i] == lineP[i + 1]:
             y = lineP[i] * 2
-            InternalScore = InternalScore + y  #score it
+            InternalScore += y          #score it
             lineP[i] = y
             lineP[i + 1] = 0
     return lineP
@@ -260,9 +260,9 @@ def turnEmul(gardenT, direction):  #4 turn emulation depends on arrow direction
     scoreT = InternalScore
     perspScore = perspCount(outputT)
     cornerScore = cornerCount(outputT)
-    before = 16 - np.count_nonzero(gardenT)
-    after = 16 - np.count_nonzero(outputT)
-    zerosScore =  after - before  #convert count of non-zeros into zeros
+    #before = 16 - np.count_nonzero(gardenT)
+    #after = 16 - np.count_nonzero(outputT)
+    zerosScore =  16 - np.count_nonzero(outputT)  #convert count of non-zeros into zeros
     perfectnessScore = getPerfectDiff(outputT)
     if args.loglevel > 0:
         if args.loglevel > 1:
@@ -284,7 +284,7 @@ def weightLifter(freespace, matrixW):  #taken DRUL matrix with values and compil
     global EmptyMod, ScoreMod, PerspMod, CornerMod, PerfectMod
     for x in range(0, 4):
         matrixW[0, x] *= EmptyMod * ( 1000 if freespace < 6 else 1 )
-        matrixW[1, x] *= ScoreMod       #apply ScoreMod to score row
+        matrixW[1, x] *= ScoreMod                                       #apply ScoreMod to score row
         matrixW[2, x] *= PerspMod
         matrixW[3, x] *= CornerMod
         matrixW[4, x] *= PerfectMod
@@ -313,14 +313,14 @@ def decisionMaker(gardenD):
     rightMatrix, rightZeros, rightScore, rightPersp, rightCorScore, rightPerfect = turnEmul(Garden, "right")
     upMatrix, upZeros, upScore, upPersp, upCorScore, upPerfect = turnEmul(Garden, "up")
     leftMatrix, leftZeros, leftScore, leftPersp, leftCorScore, leftPerfect = turnEmul(Garden, "left")
-    map = {'down': downMatrix, 'right': rightMatrix, 'up': upMatrix, 'left': leftMatrix}
+    map = {"down": downMatrix, "right": rightMatrix, "up": upMatrix, "left": leftMatrix}
     drul = np.matrix([(downZeros, rightZeros, upZeros, leftZeros),
                       (downScore, rightScore, upScore, leftScore),
                       (downPersp, rightPersp, upPersp, leftPersp),
                       (downCorSore, rightCorScore, upCorScore, leftCorScore),
                       (downPerfect, rightPerfect, upPerfect, leftPerfect),
                       (-1000, 0, 0, 0)])
-    tuplist = weightLifter(16 - np.non-zeros(Garden), drul)
+    tuplist = weightLifter(16 - np.count_nonzero(Garden), drul)
 
     if args.loglevel > 0:
         if args.loglevel > 1:
@@ -433,5 +433,15 @@ while args.play == True:
             element.send_keys(Keys.ARROW_UP)
         elif d == "left":
             element.send_keys(Keys.ARROW_LEFT)
+        
+        x = int(getPubScore())
+        if ScoreCheck !=  x :
+            time.sleep(2)
+            print
+            print
+            print "AAAAAAAAAAAAAA! " + str(ScoreCheck) + " != " + str(x)
+            print
+            print
+
         time.sleep(0.1)
 

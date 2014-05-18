@@ -49,4 +49,4 @@
  - [ ] Fix: Perspective scores should apply only in case bot get real scores on this turn!
  - [x] Refactor: put all Mod to weightLifter, put all scoring to turnEmulator
  - [x] Remove intertools
- - [ ] Batch-launcher notes \n bug
+ - [ ] Fix csv EOL for WIN 
