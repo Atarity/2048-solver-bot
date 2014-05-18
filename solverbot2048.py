@@ -1,7 +1,5 @@
 import os, time, re, sys, csv, datetime, timeit, argparse, gc
 import numpy as np
-import itertools
-from operator import itemgetter
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 import snake
@@ -45,7 +43,7 @@ parser.add_argument("-me", "--emptymod", help="\"Empty\" modificator value", act
 parser.add_argument("-ms", "--scoremod", help="\"Score\" modificator value", action=modsAction, metavar="X", type=float,
                     default=1)
 parser.add_argument("-mc", "--cornermod", help="\"Corner\" modificator value", action=modsAction, metavar="X", type=float,
-                    default=1)
+                    default=0)
 parser.add_argument("-mp", "--perspmod", help="\"Perspective\" modificator value", action=modsAction, metavar="X",
                     type=float, default=1)
 parser.add_argument("-mr", "--perfmod", help="\"Perfect snake\" modificator value", action=modsAction, metavar="X",
@@ -61,7 +59,7 @@ driver = webdriver.Chrome(chromedriver)
 driver.get("http://gabrielecirulli.github.io/2048/")
 assert "2048" in driver.title
 
-Version = "0.1.7"
+Version = "0.1.8"
 Garden = np.zeros((4, 4), dtype=np.int)  #global matrix for storing tiles state
 TimerStart, TimerStop = 0, 0
 CounterTurn, CounterTurnDown, CounterTurnRight, CounterTurnUp, CounterTurnLeft = 0, 0, 0, 0, 0
@@ -204,7 +202,7 @@ def perspCount(inputP):
         for i in range(0, 3):
             if inputP[x, i] != 0 and inputP[x, i] == inputP[x, i + 1]:
                 pCount += inputP[x, i]
-    return pCount
+    return pCount * 2
 
 
 def cornerCount(inputC):  #got scores if max garden tile are in one of the corner
@@ -232,7 +230,8 @@ def getPerfectDiff(a2d):
     """
     pl = getPerfectList(a2d)
     distmap = [i for i in range(0, len(pl))]
-    return reduce(lambda a, (d, (p, l)): a - (abs(p-l)*0.05 if p != l and l != 0 else ( abs(p-l)*0.07 if l == 0 else 0) ) , zip(distmap, zip(pl, snake.SnakeUnfolder(a2d))), 0)
+    perfScores = reduce(lambda a, (d, (p, l)): a - abs(p-l), zip(distmap, zip(pl, snake.SnakeUnfolder(a2d))), 0)
+    return perfScores / float(sum(pl))
 
 
 def turnEmul(gardenT, direction):  #4 turn emulation depends on arrow direction
@@ -258,11 +257,11 @@ def turnEmul(gardenT, direction):  #4 turn emulation depends on arrow direction
     elif direction == "left":
         outputT = np.rot90(outputT, 3)
     scoreT = InternalScore
-    perspScore = perspCount(outputT)
+    perspScore = 0 if np.array_equal(gardenT, outputT) else perspCount(outputT)
     cornerScore = cornerCount(outputT)
-    #before = 16 - np.count_nonzero(gardenT)
-    #after = 16 - np.count_nonzero(outputT)
-    zerosScore =  16 - np.count_nonzero(outputT)  #convert count of non-zeros into zeros
+    filledBefore = np.count_nonzero(gardenT)
+    filledAfter = np.count_nonzero(outputT)
+    zerosScore = filledBefore - filledAfter
     perfectnessScore = getPerfectDiff(outputT)
     if args.loglevel > 0:
         if args.loglevel > 1:
@@ -283,7 +282,7 @@ def turnEmul(gardenT, direction):  #4 turn emulation depends on arrow direction
 def weightLifter(freespace, matrixW):  #taken DRUL matrix with values and compile list with turns priority on output
     global EmptyMod, ScoreMod, PerspMod, CornerMod, PerfectMod
     for x in range(0, 4):
-        matrixW[0, x] *= EmptyMod * ( 1000 if freespace < 6 else 1 )
+        matrixW[0, x] *= EmptyMod * ( 1000 if freespace < 3 else 1 )
         matrixW[1, x] *= ScoreMod                                       #apply ScoreMod to score row
         matrixW[2, x] *= PerspMod
         matrixW[3, x] *= CornerMod
@@ -298,6 +297,13 @@ def weightLifter(freespace, matrixW):  #taken DRUL matrix with values and compil
             print " "
     return tup
 
+def normalize(a,b,c,d,by):
+    if by > 0 :
+        a /= by
+        b /= by
+        c /= by
+        d /= by
+    return a,b,c,d
 
 def decisionMaker(gardenD):
     global CounterTurn, CounterTurnDown, CounterTurnRight, CounterTurnUp, CounterTurnLeft, ScoreCheck, CounterGames, KeepGoing, TimerStart, TimerStop
@@ -313,6 +319,16 @@ def decisionMaker(gardenD):
     rightMatrix, rightZeros, rightScore, rightPersp, rightCorScore, rightPerfect = turnEmul(Garden, "right")
     upMatrix, upZeros, upScore, upPersp, upCorScore, upPerfect = turnEmul(Garden, "up")
     leftMatrix, leftZeros, leftScore, leftPersp, leftCorScore, leftPerfect = turnEmul(Garden, "left")
+
+    zerosMax = max(downZeros, rightZeros, upZeros, leftZeros)
+    downZeros, rightZeros, upZeros, leftZeros = normalize(downZeros, rightZeros, upZeros, leftZeros, zerosMax)
+
+    scoreMax = max(downScore, rightScore, upScore, leftScore)
+    downScore, upScore, leftScore, rightScore = normalize(downScore, upScore, leftScore, rightScore, scoreMax)
+
+    perspMax = max(downPersp, rightPersp, upPersp, leftPersp)
+    downPersp, upPersp, leftPersp, rightPersp = normalize(downPersp, upPersp, leftPersp, rightPersp, perspMax)
+
     map = {"down": downMatrix, "right": rightMatrix, "up": upMatrix, "left": leftMatrix}
     drul = np.matrix([(downZeros, rightZeros, upZeros, leftZeros),
                       (downScore, rightScore, upScore, leftScore),
@@ -433,15 +449,5 @@ while args.play == True:
             element.send_keys(Keys.ARROW_UP)
         elif d == "left":
             element.send_keys(Keys.ARROW_LEFT)
-        
-        x = int(getPubScore())
-        if ScoreCheck !=  x :
-            time.sleep(2)
-            print
-            print
-            print "AAAAAAAAAAAAAA! " + str(ScoreCheck) + " != " + str(x)
-            print
-            print
-
         time.sleep(0.1)
 
