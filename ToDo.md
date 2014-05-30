@@ -40,13 +40,36 @@
 	- [x] Run multiple thru subprocess
 	- [x] MOD for GamesCounter
 - [x] Gitignore for Py
+- [ ] More deeper pespective prediction (up to 5 turn minimax)
+- [ ] Down turn minimization based on prediction and weight changing
+- [x] PhantomJS
+	- [x] -ph arg
+	- [x] Process indicator
+	- [x] Screenshot if result above top
+- [x] Pushbullet API
+	- [x] Final screenshot notification thru PB
+	- [x] If result is the new best of ResultLog.csv -- PB me
+	- [x] Turn PB thru args
+- [x] Store all OS and User- dependant pref in one section
+- [ ] getPubScore output decorator
+
+### Refactoring
+- [x] Game constructor
+
+###Investigation
+- [ ] RPi deployment with PhantomJS (headless)
+- [ ] DO deployment
+- [ ] Threading
+- [x] Speed decrease at multiple endless run (PhantomJS) (solved)
+- [ ] Collect only "new" tiles from board not all of this
+- [x] Find-element-by VS xpath speed (failed)
 
 ###To fix
  - [x] Fix: TPS in multiple games
  - [x] Fix: remove commas from note before csv write
  - [ ] Fix: use unicode for notes
- - [ ] Fix: internal score counter
- - [ ] Fix: Perspective scores should apply only in case bot get real scores on this turn!
+ - [ ] Fix: internal score counter. Now looks unlocalizable -- removed.
+ - [x] Fix: Perspective scores should apply only in case bot get real scores on this turn!
  - [x] Refactor: put all Mod to weightLifter, put all scoring to turnEmulator
  - [x] Remove intertools
- - [ ] Fix csv EOL for WIN 
+ - [x] Fix csv EOL for WIN 

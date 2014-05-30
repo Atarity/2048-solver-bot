@@ -1,7 +1,10 @@
-import os, time, re, sys, csv, datetime, timeit, argparse, gc
+# -*- coding: utf-8 -*-
+
+import os, time, re, sys, csv, datetime, timeit, argparse, gc, codecs
 import numpy as np
 import itertools
 from operator import itemgetter
+from pushbullet import Device
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 import snake
@@ -38,8 +41,10 @@ parser.add_argument("-n", "--note",
                     help="short note string (<140chrs) in \"quotes\" will add to csv with each game result",
                     action=noteAction, metavar="STR", type=str, default="")
 parser.add_argument("-d", "--debug", help="reserved for debugging purposes", action="store_true")
-parser.add_argument("-l", "--loglevel", help="Verbose level from 0 to 2", choices=range(0, 3), metavar="X", type=int,
+parser.add_argument("-l", "--loglevel", help="verbose level from 0 to 2", choices=range(0, 3), metavar="X", type=int,
                     default=1)
+parser.add_argument("-ph", "--phantom", help="run Selenium in headless mode with PhantomJS", action="store_true")
+parser.add_argument("-pb", "--push", help="turn on PushBullet notifications with top results", action="store_true")
 parser.add_argument("-me", "--emptymod", help="\"Empty\" modificator value", action=modsAction, metavar="X", type=float,
                     default=1)
 parser.add_argument("-ms", "--scoremod", help="\"Score\" modificator value", action=modsAction, metavar="X", type=float,
@@ -53,15 +58,8 @@ parser.add_argument("-mr", "--perfmod", help="\"Perfect snake\" modificator valu
 args = parser.parse_args()
 ArgDict = vars(args)  #used for debugging only
 
-#chromedriver = "/Users/user/Downloads/chromedriver"    #tricky part depends on bug in Python/Selenium, SO it (OS X)
-chromedriver = "D:\chromedriver.exe"                    # WIN path
-os.environ["webdriver.chrome.driver"] = chromedriver
-driver = webdriver.Chrome(chromedriver)
 
-driver.get("http://gabrielecirulli.github.io/2048/")
-assert "2048" in driver.title
-
-Version = "0.1.7"
+Version = "0.1.8"
 Garden = np.zeros((4, 4), dtype=np.int)  #global matrix for storing tiles state
 TimerStart, TimerStop = 0, 0
 CounterTurn, CounterTurnDown, CounterTurnRight, CounterTurnUp, CounterTurnLeft = 0, 0, 0, 0, 0
@@ -70,6 +68,41 @@ EmptyMod, ScoreMod, CornerMod, PerspMod, PerfectMod = args.emptymod, args.scorem
 CounterGames = args.games
 Note = str(args.note).replace(",", " ").rstrip('\n')  #force remove all commas from notes and \n
 KeepGoing = False           #is 2048 tile reached and game continued?
+Driver, Element = None, None
+
+#--------------------------------
+#This section is about platform- and user- dependant settings. Use your own Pushbullet API key and use your own platform paths to phantomJS and Chromedriver
+#--------------------------------
+PB_api_key = "yourApiKeyHere"    #Your own PushBullet API key
+phone = Device(PB_api_key, "YourDeviceIdHere")                  #Your own Pushbullet device ID
+
+
+def loadNewGame():
+    global Driver, Element
+    if args.phantom == True :
+        driverPath = "D:\phantomjs197\phantomjs.exe"                #WIN for PhantomJS
+        Driver = webdriver.PhantomJS(driverPath)            
+    else :
+        #driverPath = "/Users/user/Downloads/chromedriver"          #OS X for Chromedriver
+        driverPath = "D:\chromedriver.exe"                          #WIN fro Chromedriver
+        os.environ["webdriver.chrome.driver"] = driverPath
+        Driver = webdriver.Chrome(driverPath)
+    Driver.delete_all_cookies()
+    Driver.get("http://gabrielecirulli.github.io/2048/")
+    assert "2048" in Driver.title
+    if args.phantom == True :                                       #PHJS workaround (cache clearing issue)
+        restartBtn = Driver.find_element_by_class_name("restart-button")
+        restartBtn.click()
+    if args.play == True :
+        Element = Driver.find_element_by_tag_name("body")
+        if args.noanim == True :                             #run script thru selenium if user turn off tile animation
+            with open("without-animation.js", "r") as myfile:
+                data = myfile.read().replace('\n', '')
+            Driver.execute_script(data)
+        gameTimer("start")
+#--------------------------------
+#End of platform- and user- dependant settings.
+#--------------------------------
 
 
 def gameTimer(standbyG):  #game stopwatch
@@ -90,15 +123,15 @@ def gameTimer(standbyG):  #game stopwatch
 
 def logToFile():
     global CounterTurn, CounterTurnDown, CounterTurnRight, CounterTurnUp, CounterTurnLeft, Garden, Note, Version
-    with open('ResultLog.csv', 'a', ) as fp:  #write results to the file
+    with codecs.open("ResultLog.csv", "ab", "UTF-8") as fp:  #write results to the file
         a = csv.writer(fp, delimiter=',')
         data = [Version,
                 datetime.datetime.now().strftime("%d%B%Y %H:%M:%S"),
                 getPubScore(),
-                np.amax(Garden),  #max tile
-                gameTimer("show"),  #time spent
+                np.amax(Garden),                                        #max tile
+                gameTimer("show"),                                      #time spent
                 round(CounterTurn / float(gameTimer("tps")), 2),  #turns per secons
-                CounterTurn,  #turns total
+                CounterTurn,                                        #turns total
                 round(float(CounterTurnDown) / CounterTurn * 100, 1),
                 round(float(CounterTurnRight) / CounterTurn * 100, 1),
                 round(float(CounterTurnUp) / CounterTurn * 100, 1),
@@ -109,10 +142,11 @@ def logToFile():
 
 
 def printSummary():  #print summary after game finished
+    global ScoreCheck, Garden, CounterTurn, CounterTurnDown, CounterTurnRight, CounterTurnUp, CounterTurnLeft
     print " "
     printMatrix(Garden)
     print " "
-    print "Score:         " + getPubScore()
+    print "Score:         " + str(getPubScore())
     print "Score check:   " + str(ScoreCheck)
     print "MaxTile:       " + str(np.amax(Garden))  #flatten Garden and found max tile
     print "Turns total:   " + str(CounterTurn)
@@ -125,10 +159,20 @@ def printSummary():  #print summary after game finished
     print " "
 
 
-def getPubScore():  #get game score from web page
-    score = driver.find_element_by_class_name("score-container")
+def getPubScore():                  #get game score directly from web page
+    score = Driver.find_element_by_class_name("score-container")
     pubScore = re.split('\+', score.get_attribute("innerText"))  #split string on "+" and save 1st part
-    return str(pubScore[0])
+    return int(pubScore[0])
+
+
+def getMaxFromFile():               #get all time maximum score from resultlog.csv
+    scoreList = []
+    with codecs.open("ResultLog.csv", "rb", "UTF-8") as fp:
+        a = csv.reader(fp, delimiter = ",")
+        for row in a :
+            scoreList.append(row[2])
+        scoreList.remove("Score")        
+        return np.amax(np.asarray(scoreList).astype(int))               #turn list into np array, convert to int and return max element
 
 
 def printMatrix(matrixP):  #fancy matrices renderer for debugging
@@ -155,7 +199,6 @@ def growth(gardenG):
     for i in gardenG:
         mes = re.findall(r"\d+", str(i.get_attribute("class")))  #take only digits from class-name
         Garden[(int(mes[2]) - 1), (int(mes[1]) - 1)] = int(mes[0])  #put it to the 2D matrix
-
     if args.loglevel > 0:
         if args.loglevel > 1:
             print "Garden:"
@@ -260,8 +303,6 @@ def turnEmul(gardenT, direction):  #4 turn emulation depends on arrow direction
     scoreT = InternalScore
     perspScore = perspCount(outputT)
     cornerScore = cornerCount(outputT)
-    #before = 16 - np.count_nonzero(gardenT)
-    #after = 16 - np.count_nonzero(outputT)
     zerosScore =  16 - np.count_nonzero(outputT)  #convert count of non-zeros into zeros
     perfectnessScore = getPerfectDiff(outputT)
     if args.loglevel > 0:
@@ -304,7 +345,7 @@ def decisionMaker(gardenD):
 
     if np.amax(gardenD) == 2048 and KeepGoing == False :
         time.sleep(3)
-        kpbtn = driver.find_element_by_class_name("keep-playing-button")
+        kpbtn = Driver.find_element_by_class_name("keep-playing-button")
         kpbtn.click()
         KeepGoing = True
         time.sleep(1)
@@ -339,25 +380,35 @@ def decisionMaker(gardenD):
     elif np.array_equal(Garden, map[tuplist[3][0]]) == False:
         decision = tuplist[3][0]
     else:
+        pubScore = getPubScore()
         gameTimer("stop")
+        if pubScore > getMaxFromFile():
+            Driver.save_screenshot("Screenshots/" + str(pubScore) + ".png")
+            if args.push == True :
+                with open("Screenshots/" + str(pubScore) + ".png") as png:
+                    push = phone.push_file(png, u"Completed during " + gameTimer("show") + u" with max tile " + str(np.amax(Garden)) + u" and speed of " + str(round(CounterTurn / float(gameTimer("tps")), 2)) + u" turns per sec.") 
         logToFile()
         printSummary()
-        gc.collect()
-
-        time.sleep(0.5)
-        TimerStart, TimerStop = 0, 0
-        CounterTurn, CounterTurnDown, CounterTurnRight, CounterTurnUp, CounterTurnLeft = 0, 0, 0, 0, 0
-        InternalScore, ScoreCheck = 0, 0
-        KeepGoing = False
-        gameTimer("start")
-        retryBtn = driver.find_element_by_class_name("retry-button")
-        retryBtn.click()
         CounterGames -= 1
+        gc.collect()
+        time.sleep(0.5)
+
         if CounterGames <= 0:
-            driver.close()
+            Driver.close()
+            Driver.quit()
             sys.exit()
         else:
+            Driver.close()
+            Driver.quit()
+            TimerStart, TimerStop = 0, 0
+            CounterTurn, CounterTurnDown, CounterTurnRight, CounterTurnUp, CounterTurnLeft = 0, 0, 0, 0, 0
+            InternalScore, ScoreCheck = 0, 0
+            KeepGoing = False
             time.sleep(2)
+            loadNewGame()
+            #gameTimer("start")
+            #retryBtn = Driver.find_element_by_class_name("retry-button")
+            #retryBtn.click()
             return None
 
     if decision == "down":
@@ -374,74 +425,49 @@ def decisionMaker(gardenD):
         ScoreCheck += leftScore
     CounterTurn += 1
 
-    if args.loglevel > 0:
-        if args.loglevel > 1:
+    if args.loglevel > 0 :
+        if args.loglevel > 1 :
             print decision.upper()
+    else :
+        sys.stdout.write("\rTurn: %d" %CounterTurn) 
+        sys.stdout.flush()
 
     return decision
 
+loadNewGame()
 
-while args.debug == True:  #debug mode with old raw_input() interface
+while args.debug == True:               #debug mode with old raw_input() interface
     if args.noanim == True:
         with open("without-animation.js", "r") as myfile:
             data = myfile.read().replace('\n', '')
-        driver.execute_script(data)
+        Driver.execute_script(data)
     quit = ["stop", "exit", "quit", "q"]
     action = ["action", "act"]
-    play = ["play", "pl"]
     response = raw_input()
     if response in action:
-        print ArgDict
-        print args.games
-    elif response in play:
-        element = driver.find_element_by_tag_name("body")
-        gameTimer("start")
-        while True:
-            seeds = driver.find_elements_by_class_name("tile")
-            growth(seeds)
-            d = decisionMaker(Garden)
-            if d == "down":
-                element.send_keys(Keys.ARROW_DOWN)
-            elif d == "right":
-                element.send_keys(Keys.ARROW_RIGHT)
-            elif d == "up":
-                element.send_keys(Keys.ARROW_UP)
-            elif d == "left":
-                element.send_keys(Keys.ARROW_LEFT)
-            time.sleep(0.1)
+        Driver.save_screenshot("Screenshots/test.png")
+        with open("Screenshots/test.png", "rb") as png:
+            push = phone.push_file(png, "str")
     elif response in quit:
         time.sleep(0.1)
-        driver.close()
+        Driver.close()
+        Driver.quit()
         sys.exit()
 
-while args.play == True:
-    element = driver.find_element_by_tag_name("body")
-    if args.noanim == True:  #run script thru selenium if user turn off tile animation
-        with open("without-animation.js", "r") as myfile:
-            data = myfile.read().replace('\n', '')
-        driver.execute_script(data)
-    gameTimer("start")
-    while True:
-        seeds = driver.find_elements_by_class_name("tile")
-        growth(seeds)
-        d = decisionMaker(Garden)
-        if d == "down":
-            element.send_keys(Keys.ARROW_DOWN)
-        elif d == "right":
-            element.send_keys(Keys.ARROW_RIGHT)
-        elif d == "up":
-            element.send_keys(Keys.ARROW_UP)
-        elif d == "left":
-            element.send_keys(Keys.ARROW_LEFT)
-        
-        x = int(getPubScore())
-        if ScoreCheck !=  x :
-            time.sleep(2)
-            print
-            print
-            print "AAAAAAAAAAAAAA! " + str(ScoreCheck) + " != " + str(x)
-            print
-            print
 
+while True:
+    seeds = Driver.find_elements_by_class_name("tile")
+    growth(seeds)
+    d = decisionMaker(Garden)
+    if d == "down":
+        Element.send_keys(Keys.ARROW_DOWN)
+    elif d == "right":
+        Element.send_keys(Keys.ARROW_RIGHT)
+    elif d == "up":
+        Element.send_keys(Keys.ARROW_UP)
+    elif d == "left":
+        Element.send_keys(Keys.ARROW_LEFT)
+    elif d == None :
         time.sleep(0.1)
+    time.sleep(0.1)                         #this small every-turn shit keep selenium out of flooding
 

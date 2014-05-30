@@ -26,11 +26,11 @@ MaxInstances = args.instances
 """
 if GamesCounter % MaxInstances == 0 :           #mod, 15 % 4 = 3
     for x in range (0, MaxInstances) :
-    	subprocess.Popen(["python", "2048-solver-bot.py", "-p", "-l 0", "-g " + str(int(round(GamesCounter/MaxInstances))), "-n" + str(GamesCounter) + " games on " + str(MaxInstances) + " instances"])
+    	subprocess.Popen(["python", "solverbot2048.py", "-p", "-l 0", "-ph", "-pb", "-g " + str(int(round(GamesCounter/MaxInstances))), "-n" + str(GamesCounter) + " games on " + str(MaxInstances) + " instances"])
 #    sys.exit()
 else :
-    subprocess.Popen(["python", "2048-solver-bot.py", "-p", "-l 0", "-g " + str(int(round(GamesCounter/MaxInstances)) + (GamesCounter % MaxInstances)), "-n" + str(GamesCounter) + " games on " + str(MaxInstances) + " instances"])
+    subprocess.Popen(["python", "solverbot2048.py", "-p", "-l 0", "-ph", "-pb", "-g " + str(int(round(GamesCounter/MaxInstances)) + (GamesCounter % MaxInstances)), "-n" + str(GamesCounter) + " games on " + str(MaxInstances) + " instances"])
     for x in range (0, MaxInstances - 1) :
-        subprocess.Popen(["python", "2048-solver-bot.py", "-p", "-l 0", "-g " + str(int(round(GamesCounter/MaxInstances))), "-n" + str(GamesCounter) + " games on " + str(MaxInstances) + " instances"])
+        subprocess.Popen(["python", "solverbot2048.py", "-p", "-l 0", "-ph", "-pb", "-g " + str(int(round(GamesCounter/MaxInstances))), "-n" + str(GamesCounter) + " games on " + str(MaxInstances) + " instances"])
 #    sys.exit()
-sys.exit()
+#sys.exit()
