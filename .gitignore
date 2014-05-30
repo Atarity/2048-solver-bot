@@ -1,5 +1,6 @@
 # Byte-compiled / optimized / DLL files
 __pycache__/
 Screenshots/
-*.py[cod]
 ghostdriver.log
+*.py[cod]
+.idea/

@@ -571,3 +571,4 @@ Version,Timestamp,Score,MaxTile,TimeSpent,TurnsPerSecond,TurnsTotal,Down %,Right
 0.1.8,30May2014 21:39:21,15556,1024,06:26,2.43,939,0.1,30.0,46.3,23.5,[128 1024 512 64 - 32 64 128 16 - 8 32 16 4 - 2 4 8 2],3 games to check Selenium reloads
 0.1.8,30May2014 21:48:16,16552,1024,08:44,1.88,984,0.0,26.0,46.8,27.1,[64 256 512 1024 - 32 64 128 32 - 8 32 16 4 - 2 4 8 2],3 games to check Selenium reloads
 0.1.8,30May2014 22:13:01,19696,1024,05:23,3.47,1121,0.2,27.3,47.0,25.5,[2 1024 512 64 - 512 256 64 16 - 8 16 32 2 - 2 4 8 4],3 games to check Selenium reloads
+0.1.8,31May2014 01:16:40,16428,1024,04:29,3.62,975,0.1,26.2,46.9,26.9,[2 512 256 64 - 1024 64 128 32 - 8 32 8 4 - 4 2 4 2],3 games to check Selenium reloads
