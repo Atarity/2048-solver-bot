@@ -68,7 +68,7 @@
  - [x] Fix: TPS in multiple games
  - [x] Fix: remove commas from note before csv write
  - [ ] Fix: use unicode for notes
- - [ ] Fix: internal score counter. Now looks unlocalizable -- removed.
+ - [ ] Fix: internal score counter.
  - [x] Fix: Perspective scores should apply only in case bot get real scores on this turn!
  - [x] Refactor: put all Mod to weightLifter, put all scoring to turnEmulator
  - [x] Remove intertools

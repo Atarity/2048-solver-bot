@@ -59,7 +59,7 @@ args = parser.parse_args()
 ArgDict = vars(args)  #used for debugging only
 
 
-Version = "0.1.8"
+Version = "0.1.9"
 Garden = np.zeros((4, 4), dtype=np.int)  #global matrix for storing tiles state
 TimerStart, TimerStop = 0, 0
 CounterTurn, CounterTurnDown, CounterTurnRight, CounterTurnUp, CounterTurnLeft = 0, 0, 0, 0, 0
@@ -67,18 +67,22 @@ InternalScore, ScoreCheck = 0, 0
 EmptyMod, ScoreMod, CornerMod, PerspMod, PerfectMod = args.emptymod, args.scoremod, args.cornermod, args.perspmod, args.perfmod
 CounterGames = args.games
 Note = str(args.note).replace(",", " ").rstrip('\n')  #force remove all commas from notes and \n
-KeepGoing = False           #is 2048 tile reached and game continued?
+KeepGoing = False                                       #is 2048 tile reached and game continued?
 Driver, Element = None, None
 
 #--------------------------------
 #This section is about platform- and user- dependant settings. Use your own Pushbullet API key and use your own platform paths to phantomJS and Chromedriver
 #--------------------------------
-PB_api_key = "YourAPIkey"    #Your own PushBullet API key
-phone = Device(PB_api_key, "YourDeviceID")                  #Your own Pushbullet device ID
+PB_api_key = "v1mJDwghGTdeyPxxnToKBZ1qAYIUx83sKFujwVbgDhJ5o"    #Your own PushBullet API key
+phone = Device(PB_api_key, "5685265389584384")                  #Your own Pushbullet device ID
 
 
 def loadNewGame():
-    global Driver, Element
+    global Driver, Element, TimerStart, TimerStop, CounterTurn, CounterTurnDown, CounterTurnRight, CounterTurnUp, CounterTurnLeft, InternalScore, ScoreCheck, KeepGoing
+    TimerStart, TimerStop = 0, 0
+    CounterTurn, CounterTurnDown, CounterTurnRight, CounterTurnUp, CounterTurnLeft = 0, 0, 0, 0, 0
+    InternalScore, ScoreCheck = 0, 0
+    KeepGoing = False
     if args.phantom == True :
         driverPath = "D:\phantomjs197\phantomjs.exe"                #WIN for PhantomJS
         Driver = webdriver.PhantomJS(driverPath)            
@@ -192,8 +196,7 @@ def flattenGarden():  #using only in csv logs, shaping fancy flatten Garden
     return s
 
 
-#find all page elements with class-name "tile" and parse it class-names, make matrix from this data and show it
-def growth(gardenG):
+def growth(gardenG):                #find all page elements with class-name "tile" and parse it class-names, make matrix from this data and show it
     global Garden
     Garden = np.zeros((4, 4), dtype=np.int)
     for i in gardenG:
@@ -226,8 +229,8 @@ def powerPerform(lineP):  #make tile multiplication
     return lineP
 
 
-def lineAction(lineL):  #perform turn-simulation on exact column
-    if len(set(lineL)) == 1:  #if all elements is identical
+def lineAction(lineL):              #perform turn-simulation on exact column
+    if len(set(lineL)) == 1:        #if all elements is identical
         x = lineL[0] * 2
         lineL = [x, x, 0, 0]
     else:
@@ -250,7 +253,7 @@ def perspCount(inputP):
     return pCount * 2
 
 
-def cornerCount(inputC):  #got scores if max garden tile are in one of the corner
+def cornerCount(inputC):            #got scores if max garden tile are in one of the corner
     cornerScore = 0
     max = np.amax(inputC)
     if any([inputC[0, 0] == max, inputC[0, 3] == max, inputC[3, 0] == max, inputC[3, 3] == max]):
@@ -279,7 +282,7 @@ def getPerfectDiff(a2d):
     return perfScores / float(sum(pl))
 
 
-def turnEmul(gardenT, direction):  #4 turn emulation depends on arrow direction
+def turnEmul(gardenT, direction):       #4 turn emulation depends on arrow direction
     global InternalScore
     InternalScore = 0
     outputT = np.zeros((4, 4), dtype=np.int)
@@ -327,7 +330,7 @@ def turnEmul(gardenT, direction):  #4 turn emulation depends on arrow direction
 def weightLifter(freespace, matrixW):  #taken DRUL matrix with values and compile list with turns priority on output
     global EmptyMod, ScoreMod, PerspMod, CornerMod, PerfectMod
     for x in range(0, 4):
-        matrixW[0, x] *= EmptyMod * ( 1000 if freespace < 3 else 1 )
+        matrixW[0, x] = matrixW[0, x] * EmptyMod * ( (16 - freespace) / (freespace + 0.1) if freespace < 4 else 1 )
         matrixW[1, x] *= ScoreMod                                       #apply ScoreMod to score row
         matrixW[2, x] *= PerspMod
         matrixW[3, x] *= CornerMod
@@ -342,13 +345,15 @@ def weightLifter(freespace, matrixW):  #taken DRUL matrix with values and compil
             print " "
     return tup
 
-def normalize(a,b,c,d,by):
+
+def normalize(a,b,c,d,by):          #normalize scores by maximum value
     if by > 0 :
-        a /= by
-        b /= by
-        c /= by
-        d /= by
+        a /= float(by)
+        b /= float(by)
+        c /= float(by)
+        d /= float(by)
     return a,b,c,d
+
 
 def decisionMaker(gardenD):
     global CounterTurn, CounterTurnDown, CounterTurnRight, CounterTurnUp, CounterTurnLeft, ScoreCheck, CounterGames, KeepGoing, TimerStart, TimerStop
@@ -368,11 +373,12 @@ def decisionMaker(gardenD):
     zerosMax = max(downZeros, rightZeros, upZeros, leftZeros)
     downZeros, rightZeros, upZeros, leftZeros = normalize(downZeros, rightZeros, upZeros, leftZeros, zerosMax)
 
+    dScore, rScore, uScore, lScore = downScore, rightScore, upScore, leftScore                              # backup scores before normalizing
     scoreMax = max(downScore, rightScore, upScore, leftScore)
-    downScore, upScore, leftScore, rightScore = normalize(downScore, upScore, leftScore, rightScore, scoreMax)
+    downScore, rightScore, upScore, leftScore = normalize(downScore, rightScore, upScore, leftScore, scoreMax)
 
     perspMax = max(downPersp, rightPersp, upPersp, leftPersp)
-    downPersp, upPersp, leftPersp, rightPersp = normalize(downPersp, upPersp, leftPersp, rightPersp, perspMax)
+    downPersp, rightPersp, upPersp, leftPersp = normalize(downPersp, rightPersp, upPersp, leftPersp, perspMax)
 
     map = {"down": downMatrix, "right": rightMatrix, "up": upMatrix, "left": leftMatrix}
     drul = np.matrix([(downZeros, rightZeros, upZeros, leftZeros),
@@ -419,30 +425,23 @@ def decisionMaker(gardenD):
             sys.exit()
         else:
             Driver.close()
-            Driver.quit()
-            TimerStart, TimerStop = 0, 0
-            CounterTurn, CounterTurnDown, CounterTurnRight, CounterTurnUp, CounterTurnLeft = 0, 0, 0, 0, 0
-            InternalScore, ScoreCheck = 0, 0
-            KeepGoing = False
+            Driver.quit()            
             time.sleep(2)
             loadNewGame()
-            #gameTimer("start")
-            #retryBtn = Driver.find_element_by_class_name("retry-button")
-            #retryBtn.click()
             return None
 
     if decision == "down":
         CounterTurnDown += 1
-        ScoreCheck += downScore
+        ScoreCheck += dScore
     elif decision == "right":
         CounterTurnRight += 1
-        ScoreCheck += rightScore
+        ScoreCheck += rScore
     elif decision == "up":
         CounterTurnUp += 1
-        ScoreCheck += upScore
+        ScoreCheck += uScore
     elif decision == "left":
         CounterTurnLeft += 1
-        ScoreCheck += leftScore
+        ScoreCheck += lScore
     CounterTurn += 1
 
     if args.loglevel > 0 :
