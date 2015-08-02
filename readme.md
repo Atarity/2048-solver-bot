@@ -15,13 +15,13 @@ After installing ChromeDriver it needs to determine binaries location in script 
 `chromedriver = "/Users/user/Downloads/chromedriver"`
 
 ###Usage
-* **ResultLog.csv** -- log of all game played 
-* **solverbot2048.py** -- the main script which solves
+* **ResultLog.csv** &mdash; log of all game played 
+* **solverbot2048.py** &mdash; the main script which solves
 
 You should to change paths/API key in platform- and user- dependand section of solverbot2048.py
 
-| **Arg** |        **Full**      | **Description** |
-|--------|--------------|-----------------|  
+| **Arg** | **Full**      | **Description** |
+|:--------|:--------------|-----------------|  
 |   -h   | --help       | Show help message and exit |  
 |   -p   | --play       | Immediately starts playing after running |  
 |   -a   | --noanim     | Remove tile animation to slightly sped up process |
