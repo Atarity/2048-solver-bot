@@ -21,7 +21,7 @@ After installing ChromeDriver it needs to determine binaries location in script 
 You should to change paths/API key in platform- and user- dependand section of solverbot2048.py
 
 | Arg    | Full         | Description          |
-|:-------|:-------------|----------------------|  
+|--------|--------------|----------------------|  
 |-h      | --help       | Show help message and exit |  
 |-p      | --play       | Immediately starts playing after running |  
 |-a      | --noanim     | Remove tile animation to slightly sped up process |
